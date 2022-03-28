@@ -2,6 +2,13 @@ import guis
 from guis import *
 import pygame
 
+# TODO:
+#
+#  https://pypi.org/project/pyttsx3/
+#
+#  https://pypi.org/project/SpeechRecognition/
+#
+
 usefull = False
 ldw = 1280
 ldh = 960
@@ -37,8 +44,9 @@ def renderframe(events,display,skipevents=False,screen=None):
                 pygame.display.update()
             if  event.type == WINDOWLEAVE:
                 screen.prossesinputs("Mouseleave",event,display,globals())
-    screen.redraw(display,"none")
+
     #pygame.display.update()
+    screen.redraw(display)
 
 def render():
     global looping
@@ -56,7 +64,7 @@ def render():
         pygame.display.update()
         #pygame.time.wait(1500)
         variabletest += .5
-        print(clock.get_time())
+        #print(clock.get_time())
     pygame.quit()
 
 
@@ -124,8 +132,7 @@ if __name__ == '__main__' and False:
     #text="Hi",image="assets/checkmark.png",style={"H":dh,"W":dw})
     quit()
 
-if __name__ == '__main__' and True:
-    #print(wrapline("HHHHHH hHHH HH HH HHH HH H HH H", dynamicFont, 120))
+if __name__ == '__main__' and False:
     screen = mainWidget(pygame,"purple",style={"Border":{
     "color":"red",
     "width":3,
@@ -143,8 +150,6 @@ if __name__ == '__main__' and True:
     "round":1
     }},data={},wrapwidth=150)
     hl2 = hlistWidget("Hi123",vl,style={},data={})
-    #vlistWidget("Hi3","Hi2",0,0,red,grey,style={"W":"self.hfill()"})
-    #surfaceWidget("HI",25,25,25,25,"main",white)
     n = noneWidget(id="None")
     popout = floatyBoxWidget(id="Popout", parent=screen, style={
     "H":16
@@ -216,7 +221,6 @@ if __name__ == '__main__' and True:
     dr.addoption("Hi")
     dr.addoption("Hola")
     dr.addoption("Aloha")
-    #popout.out = True
     buttonWidget(id="Button", parent=vl, action="popout.out = True", style={
     "W":64,
     "H":32
@@ -265,10 +269,9 @@ if __name__ == '__main__' and True:
     }
     })
     helloworld.copy(newid=randid)
-    #print(counter.hasParentOfQuery("mainWidget"))
     sl = sliderWidget(id="Slider", parent=vl, style={
-    "W":32,
-    "H":32,
+    "W":512,
+    "H":72,
     "Background":"grey",
     "Slider":{
         "x":0,
@@ -281,7 +284,7 @@ if __name__ == '__main__' and True:
         "dho":12,
         "inc":1,
         "drawinc":5,
-        "notch":",w"
+        "notch":""
     }
     })
     hlw1 = hlistWidget(id="Arc List", parent=vl, style={})
@@ -300,7 +303,7 @@ if __name__ == '__main__' and True:
     "H":64,
     "Background":None,
     "Color":"red",
-    "FillValue": """sl.sliderx/sl.slidemaxx""",
+    "FillValue": """sl.rx/sl.w""",
     "Maxangle":360,
     "Angle":-90,
     "Flip":False,
@@ -319,7 +322,7 @@ if __name__ == '__main__' and True:
     "H":32,
     "Background":"lgrey",
     "Color":"cornflowerblue",
-    "FillValue": """sl.sliderx/sl.slidemaxx""",
+    "FillValue": """sl.rx/sl.w""",
     "Round":(25,25,25,25),
     "Flip":False
     })
@@ -354,7 +357,7 @@ if __name__ == '__main__' and True:
     hl2 = hlistWidget("Hi1234",vl,style={
     "W":"dw"
     })
-    hwt = textWidget(id="HelloTwo", parent=vl, style={
+    hwt = textWidget(id="HelloTwo", parent=sl, style={
     "Text":"Hello World Nice To See You",
     "Justification":"left top",
     "Wrap":256
@@ -371,8 +374,7 @@ if __name__ == '__main__' and True:
     i = imageWidget(id="Image", parent=ov2, style={
     "W":64,
     "H":64,
-    "Image":"img_file",
-    "Angle":"int(variabletest)"
+    "Image":"img_file"
     })
     hlw = hlistWidget(id="RadioList", parent=vl, style={})
     r = radioWidget(id="randid", parent=hlw, style={
@@ -523,3 +525,99 @@ if __name__ == '__main__' and False:
     #imageWidget(id="Image",parent="Hi",x=0,y=0,color=white,activecolor=white,
     #text="Hi",image="assets/checkmark.png",style={"H":dh,"W":dw})
     quit()
+
+if __name__ == '__main__' and True:
+    screen = mainWidget(pygame,"blue",style={},data={})
+    l = vlistWidget("hvl",screen,style={
+    "W":dw-8,
+    "H":dh-8,
+    "Background":"blue"
+    })
+    l.ovx="auto"
+    l.ovy="auto"
+    emptyWidget("Goon",l,style={
+    "H":64,
+    "W":32,
+    "Background":"red",
+    "Margin":(32,32,32,32),
+    "Padding":(32,32,32,32),
+    "Border":{
+    "color":"green",
+    "width":32
+    }
+    })
+    hl = hlistWidget("hl",l,style={
+    "W":"self.parentref.w",
+    "H":256,
+    "Background":"dred"
+    })
+    emptyWidget("S",hl,style={
+    "W":64,
+    "H":32,
+    "Background":"red"
+    })
+    vl = vlistWidget("Scroll",hl,style={
+    "W":128,
+    "H":128,
+    "Margin":(32,0,32,0),
+    "Padding":(0,0,0,0),
+    "Background":"black",
+    "Border":{
+    "color":"green",
+    "width":5,
+    "round":1
+    }})
+    vl.ovx="auto"
+    vl.ovy="auto"
+    vl.display = "r-lwrap"
+    vl.display = "vlist"
+    vl.wrapwidth = 256
+    vl.wrap = 128
+    i = imageWidget(id="Image", parent=vl, style={
+    "W":256,
+    "H":256,
+    "Margin":(0,0,0,0),
+    "Padding":(0,0,0,0),
+    "Background":None,
+    "Image":"img_file",
+    "Angle":"int(variabletest)",
+    "Border":{
+    "color":"green",
+    "width":-5,
+    "round":1
+    }
+    })
+    i.copy()
+    i.copy()
+    i.copy()
+    i.copy()
+    i.copy()
+    i.copy()
+    emptyWidget("S",hl,style={
+    "W":64,
+    "H":32,
+    "Background":"red"
+    })
+    emptyWidget("Goon",l,style={
+    "H":64,
+    "W":32,
+    "Background":"red",
+    "Margin":(32,32,32,32),
+    "Padding":(32,32,32,32),
+    "Border":{
+    "color":"green",
+    "width":32
+    }
+    })
+    emptyWidget("Goon",l,style={
+    "H":64,
+    "W":32,
+    "Background":"red",
+    "Margin":(32,32,32,32),
+    "Padding":(32,32,32,32),
+    "Border":{
+    "color":"green",
+    "width":32
+    }
+    })
+    render()

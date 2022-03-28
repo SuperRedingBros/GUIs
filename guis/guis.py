@@ -13,6 +13,8 @@ try:
 except:
     import css
 
+from .widget import *
+
 import math
 import pygame
 from pygame.locals import *
@@ -149,32 +151,51 @@ def wrapline(text, font, maxwidth):
         text=text[nl:]
     return wrapped
 
+def DrawBorder(x, y, w, h, t, color, surf):
+    pygame.draw.rect(surf, color, (x, y, w, t)) # top
+    pygame.draw.rect(surf, color, (x, y, t, h)) # left
+    pygame.draw.rect(surf, color, (x, y + h - t , w, t)) # bottom
+    pygame.draw.rect(surf, color, (x + w - t , y, t, h)) # right
 
 #-----------------------------------------------------------------------------------------#
 #Widgets
 #-----------------------------------------------------------------------------------------#
+allstyles = (
+"ABSX","ABSY","Color","W","H",
+"Angle","Maxangle","Flip","ActiveColor","InactiveColor",
+"Background","Text","Wrap","Wrapwidth","Image",
+"Justification","FillValue","Round",
+"Display","ovy","ovx",
+"Padding","Margin","Border","Slider","Gradient","Font"
+)
 
 # Base Classes  2
-
 
 class widget(object):
 
 # Start Helpers
+    def countchildren(self):
+        n = 0
+        c = self.children
+        if len(c)>0:
+            for x in c:
+                n+=x.countchildren()
+        else:
+            n=1
+        return n
 
-    def lookup(self,parser=parser):
-        data = parser.get(self)
-        for d in data:
-            if d != []:
-                #print(d)
-                self.style.update(d[1])
-                #print(self.style)
-        #self.style.update(data)
+    def lookup(self,lparser=None):
+        if parser != None:
+            data = lparser.get(self)
+            for d in data:
+                if d != []:
+                    self.style.update(d[1])
 
     def __str__(self):
         return "ID: "+str(self.id)+"\nStyle: "+str(self.style)+"\nParent: "+str(self.parent)
 
     def add(self,parent):
-        if not (parent == "none" or parent == None):
+        if not (parent == None):
             if isinstance(parent,widget):
                 self.parentref = parent
             #print(self.parentref)
@@ -244,6 +265,8 @@ class widget(object):
         return good,prio
 
     def copy(self,newid=randid,newparent=None):
+        global randid
+        randid+=1
         if newparent == None:
             newparent = self.parentref
         o = type(self)(id=newid, parent=newparent, style=self.style)
@@ -282,20 +305,29 @@ class widget(object):
     def testState(self,state):
         if state=="hover":
             ex,ey = pygame.mouse.get_pos()
-            b =(
-            self.sliderx+self.w+self.x > ex > self.sliderx+self.x
+            b = (
+            self.rx+self.w+self.x > ex > self.rx+self.x
             and
-            self.slidery+self.h+self.y > ey > self.slidery+self.y
+            self.ry+self.h+self.y > ey > self.ry+self.y
             )
             #print(b)
+            return b
+        elif state=="slidehover":
+            ex,ey = pygame.mouse.get_pos()
+            b = (
+            self.rx+self.x+self.hlargest() > ex > self.rx+self.x
+            and
+            self.ry+self.y+self.vlargest() > ey > self.ry+self.y
+            )
+            print(ex,ey)
             return b
         elif state=="active":
             ex,ey = pygame.mouse.get_pos()
             b = ((
             (
-            self.sliderx+self.w+self.x > ex > self.sliderx+self.x
+            self.rx+self.w+self.x > ex > self.rx+self.x
             and
-            self.slidery+self.h+self.y > ey > self.slidery+self.y
+            self.ry+self.h+self.y > ey > self.ry+self.y
             )
             and
             pygame.mouse.get_pressed()[0]
@@ -329,7 +361,7 @@ class widget(object):
             #print(x.w)
             if w < x.calc(x.w):
                 w = x.calc(x.w)
-        #print(self.w)
+        #print(w)
         return w
 
     def hfitchildren(self):
@@ -374,18 +406,7 @@ class widget(object):
         self.styleize(style)
 
     def styleize(self,style):
-        newstyle = {}
-        #print(self.h)
-        lstyles =(
-"ABSX","ABSY","Color","W","H",
-"Angle","Maxangle","Flip","ActiveColor","InactiveColor",
-"Background","Text","Wrap","Wrapwidth","Image",
-"Justification","FillValue","Round",
-"Padding","Margin","Border","Slider","Gradient","Font"
-)
-        #print("Style",drawy)
-        for k in lstyles:
-            #print("Style",k,drawy)
+        for k in allstyles:
             if k not in self.ignore:
                 x = self.getstyle(k)
                 if x != None:
@@ -395,10 +416,6 @@ class widget(object):
                             x[sk] = self.calc(x[sk])
                         #print(k,x)
                     setattr(self, k.lower(),x)
-            #print(k.lower())
-            #print(getattr(self,k.lower()))
-        #print(newstyle)
-        #print("Style",drawy)
         if "Image" in style:
             i = str(self.calc(style["Image"]))
             if i != None and i != self.limg:
@@ -406,7 +423,7 @@ class widget(object):
                 try:
                     self.image = str(i)
                     #print(self.image)
-                    self.img = self.pygame.image.load(self.image)
+                    self.img = pygame.image.load(self.image)
                     self.limg = i
                 except:
                     print("Invalid Image: "+str(self.parentref.calc(i)))
@@ -418,46 +435,15 @@ class widget(object):
                 try:
                     if self.parentref.getstyle("Image") != None:
                         self.image = self.calc(i)
-                        self.img = self.pygame.image.load(self.image)
+                        self.img = pygame.image.load(self.image)
+                        self.limg = i
                 except:
                     print("Invalid Image: "+str(i))
                     pass
-        if "Slider" in style:
-            s = style["Slider"]
-            if s != "None" and None != s:
-                self.slideminx = self.calc(style["Slider"]["x"])
-                self.slidemaxx = self.calc(style["Slider"]["w"])
-                self.slideminy = self.calc(style["Slider"]["y"])
-                self.slidemaxy = self.calc(style["Slider"]["h"])
-                self.slideinc = self.calc(style["Slider"]["inc"])
-                self.slidedrawinc = self.calc(style["Slider"]["drawinc"])
-                self.slidenotch = self.calc(style["Slider"]["notch"])
-                self.slideh = self.calc(style["Slider"]["dh"])
-                self.slideho = self.calc(style["Slider"]["dho"])
-                self.slidew = self.calc(style["Slider"]["dw"])
-                self.slidewo= self.calc(style["Slider"]["dwo"])
-            else:
-                pass
-        elif self.parentref != None:
-            s = self.parentref.getstyle("Slider")
-            if s != "None" and None != s:
-                self.slideminx = self.calc(self.parentref.getstyle("Slider")["x"])
-                self.slidemaxx = self.calc(self.parentref.getstyle("Slider")["w"])
-                self.slideminy = self.calc(self.parentref.getstyle("Slider")["y"])
-                self.slidemaxy = self.calc(self.parentref.getstyle("Slider")["h"])
-                self.slideinc = self.calc(self.parentref.getstyle("Slider")["inc"])
-                self.slidedrawinc = self.calc(self.parentref.getstyle("Slider")["drawinc"])
-                self.slidenotch = self.calc(self.parentref.getstyle("Slider")["notch"])
-                self.slideh = self.calc(self.parentref.getstyle("Slider")["dh"])
-                self.slideho = self.calc(self.parentref.getstyle("Slider")["dho"])
-                self.slidew = self.calc(self.parentref.getstyle("Slider")["dw"])
-                self.slidewo = self.calc(self.parentref.getstyle("Slider")["dwo"])
-            else:
-                pass
         if "Gradient" in style:
             Gradient = style["Gradient"]
             #print(Gradient)
-            if Gradient != "None" and None != Gradient:
+            if None != Gradient:
                 self.gradient["base"] = self.calc(Gradient["base"])
                 self.gradient["end"] = self.calc(Gradient["end"])
                 self.gradient["types"] = self.calc(Gradient["types"])
@@ -468,7 +454,7 @@ class widget(object):
                 pass
         elif self.parentref != None:
             Gradient = self.parentref.getstyle("Gradient")
-            if Gradient != "None" and None != Gradient:
+            if None != Gradient:
                 self.gradient["base"] = self.calc(self.parentref.getstyle("Gradient")["base"])
                 self.gradient["end"] = self.calc(self.parentref.getstyle("Gradient")["end"])
                 self.gradient["types"] = self.calc(self.parentref.getstyle("Gradient")["types"])
@@ -477,31 +463,6 @@ class widget(object):
                 self.gradient["inverse"] = self.calc(self.parentref.getstyle("Gradient")["inverse"])
             else:
                 pass
-        if "Font" in style:
-            Font = style["Font"]
-            #print(Gradient)
-            #print(Font)
-            if Font != "None" and None != Font:
-                self.font["File"] = self.calc(Font["File"])
-                self.font["File"] = self.font["File"].replace("./",str(path)+"/")
-                self.font["Scale"] = self.calc(Font["Scale"])
-                self.font["Italics"] = self.calc(Font["Italics"])
-                self.font["Underline"] = self.calc(Font["Underline"])
-            else:
-                print("Invalid Font: "+str(Font))
-                pass
-        elif self.parentref != None:
-            Font = self.parentref.getstyle("Font")
-            if Font != "None" and None != Font:
-                self.font["File"] = self.calc(Font["File"])
-                self.font["File"] = self.font["File"].replace("./",str(path)+"/")
-                self.font["Scale"] = self.calc(Font["Scale"])
-                self.font["Italics"] = self.calc(Font["Italics"])
-                self.font["Underline"] = self.calc(Font["Underline"])
-            else:
-                print("Invalid Font: "+str(Font))
-                pass
-        #print("Style",drawy)
 
     def wraplargestw(self):
         w = 0
@@ -514,231 +475,9 @@ class widget(object):
         #print(h)
         return self.wrapedhight
 
-    def sstyleize(self,style):
-        #print("styleize"+str(self.style))
-        if "Padding" in style:
-            self.padding = self.calc(style["Padding"])
-        elif self.parentref != None:
-            self.padding = self.calc(self.parentref.getstyle("Padding"))
-        if "Margin" in style:
-            self.margin = self.calc(style["Margin"])
-        elif self.parentref != None:
-            self.margin = self.calc(self.parentref.getstyle("Margin"))
-        if "X" in style:
-            x = self.calc(style["X"])
-            #print(h)
-            self.absx = x
-        elif self.parentref != None:
-            x = self.calc(self.parentref.getstyle("X"))
-            self.absx = x
-        if "Y" in style:
-            y = self.calc(style["Y"])
-            self.absy = y
-        elif self.parentref != None:
-            y = self.calc(self.parentref.getstyle("Y"))
-            self.absy = y
-        if "H" in style:
-            if "H" in self.data:
-                pass#print(style["H"])
-            h = self.calc(style["H"])
-            h+=self.margin[1]
-            h+=self.margin[3]
-            h+=self.padding[1]
-            h+=self.padding[3]
-            self.h = h
-            if "H" in self.data:
-                pass#print("Hieght"+str(self)+str(self.h))
-        elif self.parentref != None:
-            h = int(self.calc(self.parentref.getstyle("H")))
-            h+=self.margin[1]
-            h+=self.margin[3]
-            h+=self.padding[1]
-            h+=self.padding[3]
-            self.h = h
-        if "W" in style:
-            w = self.calc(style["W"])
-            w+=self.margin[0]
-            w+=self.margin[2]
-            w+=self.padding[0]
-            w+=self.padding[2]
-            self.w = w
-        elif self.parentref != None:
-            w = self.calc(self.parentref.getstyle("W"))
-            w+=self.margin[0]
-            w+=self.margin[2]
-            w+=self.padding[0]
-            w+=self.padding[2]
-            self.w = w
-        if "Angle" in style:
-            self.angle = self.calc(style["Angle"])
-        elif self.parentref != None:
-            x = self.calc(self.parentref.getstyle("Angle"))
-            if x != None:
-                self.angle = x
-        if "Maxangle" in style:
-            self.maxangle = self.calc(style["Maxangle"])
-        elif self.parentref != None:
-            x = self.calc(self.parentref.getstyle("Maxangle"))
-            if x != None:
-                self.maxangle = x
-        if "Flip" in style:
-            self.flip = self.calc(style["Flip"])
-        elif self.parentref != None:
-            x = self.calc(self.parentref.getstyle("Flip"))
-            if x != None:
-                self.flip = x
-        if "Color" in style:
-            self.color = self.calc(style["Color"])
-        elif self.parentref != None:
-            self.color =  self.calc(self.parentref.getstyle("Color"))
-        if "ActiveColor" in style:
-            self.activecolor = self.calc(style["ActiveColor"])
-        elif self.parentref != None:
-            self.activecolor =  self.calc(self.parentref.getstyle("ActiveColor"))
-        if "InactiveColor" in style:
-            self.inactivecolor = self.calc(style["InactiveColor"])
-        elif self.parentref != None:
-            self.inactivecolor =  self.calc(self.parentref.getstyle("InactiveColor"))
-        if "Background" in style:
-            self.background = self.calc(style["Background"])
-        elif self.parentref != None:
-            self.background =  self.calc(self.parentref.getstyle("Background"))
-        if "Text" in style:
-            self.text = str(self.calc(style["Text"]))
-        elif self.parentref != None:
-            self.text = self.calc(self.parentref.getstyle("Text"))
-        if "Wrap" in style:
-            self.wrap = str(self.calc(style["Wrap"]))
-        elif self.parentref != None:
-            self.wrap = self.calc(self.parentref.getstyle("Wrap"))
-        if "Justification" in style:
-            self.justification = style["Justification"]
-        elif self.parentref != None:
-            self.justification = self.parentref.getstyle("Justification")
-        if "Image" in style:
-            i = str(self.calc(style["Image"]))
-            if i != None and i != self.limg:
-                i = i.replace("./",str(path)+"/")
-                try:
-                    self.image = str(i)
-                    #print(self.image)
-                    self.img = self.pygame.image.load(self.image)
-                    self.limg = i
-                except:
-                    print("Invalid Image: "+str(self.parentref.calc(i)))
-        elif self.parentref != None:
-            try:
-                if self.parentref.getstyle("Image") != None:
-                    self.image = self.calc(self.parentref.getstyle("Image"))
-                    self.img = self.pygame.image.load(self.image)
-            except:
-                print("Invalid Image: "+str(self.parentref.getstyle("Image")))
-        if "FillValue" in style:
-            self.fillvalue = clamp(self.calc(style["FillValue"]),0,1)
-        elif self.parentref != None:
-            self.fillvalue = self.calc(self.parentref.getstyle("FillValue"))
-        if "Round" in style:
-            self.round = self.calc(style["Round"])
-        elif self.parentref != None:
-            self.round = self.calc(self.parentref.getstyle("Round"))
-        if "Border" in style:
-            #print(self.border)
-            #print(self)
-            if style["Border"] != "None" and None != style["Border"]:
-                #self.border = {}
-                #print("1")
-                self.border["color"] = self.calc(style["Border"]["color"])
-                self.border["width"] = self.calc(style["Border"]["width"])
-                self.border["round"] = self.calc(style["Border"]["round"])
-            else:
-                self.border = "None"
-        elif self.parentref != None:
-            if self.parentref.getstyle("Border") != "None" and None != self.parentref.getstyle("Border"):
-                #self.border = {}
-                self.border["color"] = self.calc(self.parentref.getstyle("Border")["color"])
-                self.border["width"] = self.calc(self.parentref.getstyle("Border")["width"])
-                self.border["round"] = self.calc(self.parentref.getstyle("Border")["round"])
-            else:
-                self.border = "None"
-        if "Slider" in style:
-            s = style["Slider"]
-            if s != "None" and None != s:
-                self.slideminx = self.calc(style["Slider"]["x"])
-                self.slidemaxx = self.calc(style["Slider"]["w"])
-                self.slideminy = self.calc(style["Slider"]["y"])
-                self.slidemaxy = self.calc(style["Slider"]["h"])
-                self.slideinc = self.calc(style["Slider"]["inc"])
-                self.slidedrawinc = self.calc(style["Slider"]["drawinc"])
-                self.slidenotch = self.calc(style["Slider"]["notch"])
-                self.slideh = self.calc(style["Slider"]["dh"])
-                self.slideho = self.calc(style["Slider"]["dho"])
-                self.slidew = self.calc(style["Slider"]["dw"])
-                self.slidewo= self.calc(style["Slider"]["dwo"])
-            else:
-                pass
-        elif self.parentref != None:
-            s =self.parentref.getstyle("Slider")
-            if s != "None" and None != s:
-                self.slideminx = self.calc(self.parentref.getstyle("Slider")["x"])
-                self.slidemaxx = self.calc(self.parentref.getstyle("Slider")["w"])
-                self.slideminy = self.calc(self.parentref.getstyle("Slider")["y"])
-                self.slidemaxy = self.calc(self.parentref.getstyle("Slider")["h"])
-                self.slideinc = self.calc(self.parentref.getstyle("Slider")["inc"])
-                self.slidedrawinc = self.calc(self.parentref.getstyle("Slider")["drawinc"])
-                self.slidenotch = self.calc(self.parentref.getstyle("Slider")["notch"])
-                self.slideh = self.calc(self.parentref.getstyle("Slider")["dh"])
-                self.slideho = self.calc(self.parentref.getstyle("Slider")["dho"])
-                self.slidew = self.calc(self.parentref.getstyle("Slider")["dw"])
-                self.slidewo = self.calc(self.parentref.getstyle("Slider")["dwo"])
-            else:
-                pass
-        if "Gradient" in style:
-            Gradient = style["Gradient"]
-            #print(Gradient)
-            if Gradient != "None" and None != Gradient:
-                self.gradient["base"] = self.calc(Gradient["base"])
-                self.gradient["end"] = self.calc(Gradient["end"])
-                self.gradient["types"] = self.calc(Gradient["types"])
-                self.gradient["vert"] = self.calc(Gradient["vert"])
-                self.gradient["flip"] = self.calc(Gradient["flip"])
-                self.gradient["inverse"] = self.calc(Gradient["inverse"])
-            else:
-                pass
-        elif self.parentref != None:
-            Gradient = self.parentref.getstyle("Gradient")
-            if Gradient != "None" and None != Gradient:
-                self.gradient["base"] = self.calc(self.parentref.getstyle("Gradient")["base"])
-                self.gradient["end"] = self.calc(self.parentref.getstyle("Gradient")["end"])
-                self.gradient["types"] = self.calc(self.parentref.getstyle("Gradient")["types"])
-                self.gradient["vert"] = self.calc(self.parentref.getstyle("Gradient")["vert"])
-                self.gradient["flip"] = self.calc(self.parentref.getstyle("Gradient")["flip"])
-                self.gradient["inverse"] = self.calc(self.parentref.getstyle("Gradient")["inverse"])
-            else:
-                pass
-        if "Font" in style:
-            Font = style["Font"]
-            #print(Gradient)
-            #print(Font)
-            if Font != "None" and None != Font:
-                self.font["File"] = self.calc(Font["File"])
-                self.font["File"].replace("./",str(path)+"/")
-                self.font["Scale"] = self.calc(Font["Scale"])
-                self.font["Italics"] = self.calc(Font["Italics"])
-                self.font["Underline"] = self.calc(Font["Underline"])
-            else:
-                pass
-        elif self.parentref != None:
-            Font = self.parentref.getstyle("Font")
-            if Font != "None" and None != Font:
-                self.font["File"] = self.calc(Font["File"])
-                self.font["File"].replace("./",str(path)+"/")
-                self.font["Scale"] = self.calc(Font["Scale"])
-                self.font["Italics"] = self.calc(Font["Italics"])
-                self.font["Underline"] = self.calc(Font["Underline"])
-            else:
-                pass
-
-        #print("endstyleize")
+    def wrapfitw(self):
+        #print(h)
+        return self.wrapedhight
 
 # End Style
 
@@ -747,22 +486,11 @@ class widget(object):
             lglobals = globals().copy()
             lglobals.update(globallink)
         list = []
-        if input == "None":
-            return "None"
-        if type(input) == str:
-            try:
-            #if list[0] == "Eval":
-                #list.pop(0)
-                #print(input)
-                v = eval(input,lglobals,locals())
-                return v
-            #else:
-            #    return getattr(getattr(self,list[0]),list[1])
-            except Exception as e:
-                #print(input)
-                #print(e)
-                return input
-        else:
+        try:
+            v = eval(input,lglobals,locals())
+            return v
+        except Exception as e:
+            #print(e,input)
             return input
 
     def update(self):
@@ -776,7 +504,7 @@ class widget(object):
                 x.update()
 
     def prossesinputs(self,eventname,event,surface,lglobals=None):
-        self.lookup(parser=parser)
+        self.lookup(parser)
         if lglobals == None:
             lglobals = globals()
         self.changed = True
@@ -796,13 +524,13 @@ class widget(object):
         if self.background != None:
             #print(self.background)
             try:
-                self.pygame.draw.rect(
+                pygame.draw.rect(
                 surfacein,self.background,
-                self.pygame.Rect(
-                (drawx-self.margin[0])
-                ,(drawy-self.margin[1])
-                ,self.w+self.margin[2]+self.margin[0]
-                ,self.h+self.margin[3]+self.margin[1]
+                pygame.Rect(
+                (drawx)
+                ,(drawy)
+                ,self.w
+                ,self.h
                 )
                 ,
                 border_top_left_radius=self.round[0],
@@ -825,8 +553,6 @@ class widget(object):
                         w = dw-self.x if (self.w+self.x)>dw else self.w
                         h = dh-self.y if (self.h+self.y)>dh else self.h
                         surf = surfacein.subsurface((x,y,w,h))
-                        #surf = surf.copy()
-                        #print(self.background)
                         rect = surf.get_rect()
                         colors.gradientizecolor(surf,
                         self.gradient["base"],
@@ -856,26 +582,38 @@ class widget(object):
                         pass
 
     def drawBorder(self,surfacein):
+        global drawx
+        global drawy
         #print(self.border)
         #print(surfacein)
         #print(self.getstyle("Border"))
         #print(drawx,drawy,self.w,self.h,self.margin,self.padding)
-        if self.border != "None" and self.border != None:
-            self.pygame.draw.rect(
-            surfacein,self.border["color"],
-            self.pygame.Rect(
-            (drawx-self.margin[0]-self.padding[2])
-            ,(drawy-self.margin[1]-self.padding[3])
-            ,self.w+self.margin[2]-self.padding[2]-self.padding[0]
-            ,self.h+self.margin[3]-self.padding[3]-self.padding[1]
-            ),
-            self.border["width"]
-            ,
-            border_top_left_radius=self.round[0],
-            border_bottom_left_radius=self.round[3],
-            border_top_right_radius=self.round[1],
-            border_bottom_right_radius=self.round[2]
-            )
+        if self.border != None:
+            DrawBorder(drawx
+            ,drawy, self.w+self.padding[0]+self.padding[2]+(self.border["width"]*2)
+            , self.h+self.padding[1]+self.padding[3]+(self.border["width"]*2)
+            , self.border["width"], self.border["color"], surfacein)
+
+
+
+        """
+        pygame.draw.rect(
+        surfacein,self.border["color"],
+        pygame.Rect(
+        (drawx)
+        ,(drawy)
+        ,self.w+self.padding[0]+self.padding[2]+(self.border["width"]*2)
+        ,self.h+self.padding[1]+self.padding[3]+(self.border["width"]*2)
+        ),
+        self.border["width"]
+        ,
+        border_top_left_radius=self.round[0],
+        border_bottom_left_radius=self.round[3],
+        border_top_right_radius=self.round[1],
+        border_bottom_right_radius=self.round[2]
+        )
+        """
+
 
         if self.gradient != None:
             #print(self.background)
@@ -901,45 +639,140 @@ class widget(object):
                     pass
 
     def draworign(self,surfacein):
-        self.pygame.draw.rect(surfacein,(255,0,255),(self.x-5,self.y-5,10,10))
+        pygame.draw.rect(surfacein,(255,0,255),(self.x-5,self.y-5,10,10))
 
-    def drawPopouts(self,surfacein,last):
+    def drawPopouts(self,surfacein):
         for x in self.popouts:
             if x.out:
                 x.absy = drawy
                 x.absx = drawx
                 #print(x.absy)
-                x.redrawpopout(surfacein,last)
+                x.redrawpopout(surfacein)
 
-    def redraw(self,surfacein,last):
+#Box Model
+
+    def redraw(self,surfacein):
+        global drawx
+        global drawy
+        orx=drawx
+        ory=drawy
+        self.styleize(self.style)
+        self.entermargins()
+        self.enterpadding()
+        self.shiftBorder()
+        self.drawInterior(surfacein)
+        self.padcontent()
+        self.redrawInBox(surfacein)
+        self.unpadcontent()
+        self.unshiftBorder()
+        self.drawBorder(surfacein)
+        self.exitpadding()
+        self.exitmargins()
+        drawy=ory
+        drawx=orx
+
+    def shiftBorder(self):
+        global drawx
+        global drawy
+        if (self.border["width"])>0:
+            drawx+=(self.border["width"])
+            drawy+=(self.border["width"])
+            self.x+=(self.border["width"])
+            self.y+=(self.border["width"])
+
+    def unshiftBorder(self):
+        global drawx
+        global drawy
+        if (self.border["width"])>0:
+            drawx-=(self.border["width"])
+            drawy-=(self.border["width"])
+            self.x-=(self.border["width"])
+            self.y-=(self.border["width"])
+
+    def entermargins(self):
+        global drawx
+        global drawy
+        drawx+=self.margin[0]
+        drawy+=self.margin[1]
+        self.x+=self.margin[0]
+        self.y+=self.margin[1]
+
+    def exitmargins(self):
+        global drawx
+        global drawy
+        drawx+=self.margin[2]
+        drawy+=self.margin[3]
+        self.x+=self.margin[2]
+        self.y+=self.margin[3]
+        self.w+=self.margin[0]
+        self.h+=self.margin[1]
+        self.w+=self.margin[2]
+        self.h+=self.margin[3]
+        if (self.border["width"])>0:
+            self.w+=(self.border["width"])
+            self.h+=(self.border["width"])
+            self.w+=(self.border["width"])
+            self.h+=(self.border["width"])
+
+    def enterpadding(self):
+        self.w+=self.padding[0]
+        self.h+=self.padding[1]
+        self.w+=self.padding[2]
+        self.h+=self.padding[3]
+
+    def padcontent(self):
+        global drawx
+        global drawy
+        self.w-=self.padding[0]
+        self.h-=self.padding[1]
+        self.w-=self.padding[2]
+        self.h-=self.padding[3]
+        drawx+=self.padding[0]
+        drawy+=self.padding[1]
+        self.x+=self.padding[0]
+        self.y+=self.padding[1]
+
+    def unpadcontent(self):
+        global drawx
+        global drawy
+        drawx-=self.padding[0]
+        drawy-=self.padding[1]
+        self.x-=self.padding[0]
+        self.y-=self.padding[1]
+
+    def exitpadding(self):
+        global drawx
+        global drawy
+        self.w+=self.padding[0]
+        self.h+=self.padding[1]
+        self.w+=self.padding[2]
+        self.h+=self.padding[3]
+        if (self.border["width"])>0:
+            drawx+=(self.border["width"])
+            drawy+=(self.border["width"])
+            self.x+=(self.border["width"])
+            self.y+=(self.border["width"])
+
+    def redrawInBox(self,surfacein):
         global drawy
         global drawx
-        #print("H")
-        #print(self.h)
-        #print("Y")
-        #print(drawy)
-        self.styleize(self.style)
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
-
         #print(self.id,(self.x,self.y,self.w,self.h),(drawx,drawy))
         for x in self.children:
             x.y = drawy
             x.x = drawx
-            x.redraw(surfacein,last)
-        self.changed = False
-        self.drawPopouts(surfacein,last)
+            x.redraw(surfacein)
+        self.drawPopouts(surfacein)
 
-    def __init__(self, id=randid, parent="none",style={},data={}):
+    def __init__(self, id=randid, parent=None,style={},data={}):
         global randid
         randid += 1
         self.h = 0
         self.w = 0
         self.wrapedhight = 0
         self.wrapedwidth = 0
-        self.my = 0
-        self.mx = 0
         self.y = 0
+        self.ovy = "visible"
+        self.ovx = "visible"
         self.x = 0
         self.id = id
         self.out = False
@@ -963,6 +796,7 @@ class widget(object):
         self.absx = 0
         self.absy = 0
         self.lastgradient = "Blahb"
+        self.display="vlist"
         if hasattr(self,"style"):
             self.style.update(style)
         else:
@@ -992,7 +826,8 @@ class widget(object):
         self.text = ""
         self.justification = ""
         self.angle = 0
-        self.font = {"File":"./assets/Xolonium-Bold.ttf","Scale":20,
+        fontpath = pathlib.PurePath(path,"assets/Xolonium-Bold.ttf")
+        self.font = {"File":fontpath,"Scale":20,
         "Italics":False,
         "Underline":False}
         self.lastfont = {}
@@ -1010,19 +845,8 @@ class widget(object):
         self.radiovalue = ""
         self.notifys = []
         self.popouts = []
-        #print(style)
-        self.pygame = pygame
-        self.sliderx = 0
-        self.slidery = 0
-        self.slideminx = 0
-        self.slideminy = 0
-        self.slidemaxx = 0
-        self.slidemaxy = 0
-        self.slidew = 0
-        self.slideh = 0
-        self.slidewo = 0
-        self.slideho = 0
-        self.slideinc = -1
+        self.rx = 0
+        self.ry = 0
         self.lookup(parser)
         self.styleize(style)
         self.stylecalc(self.style)
@@ -1038,7 +862,7 @@ class widgetCollection(widget):
 # Main / Surface   4
 
 class mainWidget(widget):
-    def redraw(self,surfacein,last):
+    def redraw(self,surfacein):
         #print("main")
         global drawy
         drawy = 0
@@ -1053,19 +877,21 @@ class mainWidget(widget):
         dh = s[1]
         frame = not frame
         if self.changed:
-            if self.mainbackground != "None":
+            if self.mainbackground != None:
                 surfacein.fill(self.mainbackground)
             else:
                 surfacein.fill(black)
-        super(mainWidget, self).redraw(surfacein,last)
+        super(mainWidget, self).redrawInBox(surfacein)
         #print(drawx,drawy)
 
-    def __init__(self,pygame=pygame,background="None",inglobals=globals(),style={},data={}):
-        self.pygame = pygame
+    def __init__(self,pygame=pygame,background=None,inglobals=globals(),style={},data={}):
         global globallink
         globallink.update(inglobals)
         self.children = []
         self.popouts = []
+        self.mainbackground = self.calc(background)
+        self.globals = inglobals
+        self.changed = True
         self.style = {
         "H":"self.vlargest()",
         "W":"self.hlargest()",
@@ -1103,10 +929,7 @@ class mainWidget(widget):
         "Italics":False,
         "Underline":False}
         }
-        self.mainbackground = self.calc(background)
-        self.globals = inglobals
-        self.changed = True
-        super(mainWidget, self).__init__("main"+str(randid),"none",style)
+        super(mainWidget, self).__init__("main"+str(randid),None,style)
 
 class surfaceWidget(widget):
 
@@ -1114,24 +937,17 @@ class surfaceWidget(widget):
         for x in self.children:
             x.prossesinputs(eventname,event,self.mysurface,globals)
 
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         #if self.mysurface == "" or self.recalc:
             #print((self.surfx,self.surfy,self.w,self.h))
         self.mysurface = surfacein.subsurface(
         (self.x,self.y,self.w,self.h))
-        self.recalc=False
-        self.drawInterior(surfacein)
-        super(surfaceWidget, self).redraw(self.mysurface,last)
+        super(surfaceWidget, self).redrawInBox(self.mysurface)
 
     def __init__(self,name,parent,
     surface=None,style={},data={}):
         self.name = name
-        if surface!=None:
-            self.mysurface = pygame.display.get_surface()
-            self.recalc=True
-        else:
-            self.mysurface = surface
-        self.pygame = pygame
+        self.mysurface = pygame.display.get_surface()
         self.parent = parent
         super(surfaceWidget, self).__init__(name,parent,style)
 
@@ -1141,12 +957,11 @@ class noneWidget(widget):
         pass
         #super(noneWidget, self).prossesinputs(eventname, event, surface, self.globals)
 
-    def redraw(self,surfacein,last):
+    def redraw(self,surfacein):
         pass
-        #super(noneWidget, self).redraw(surfacein,last)
+        #super(noneWidget, self).redraw(surfacein)
 
     def __init__(self,id):
-        self.pygame = pygame
         self.children = []
         style = {
         "H":"self.vlargest()",
@@ -1156,7 +971,7 @@ class noneWidget(widget):
         "Color":(255,255,255),
         "ActiveColor":(200,200,200),
         "InactiveColor":(155,155,155),
-        "Background":"None",
+        "Background":None,
         "Justification":"left top",
         "Padding":(0,0,0,0),
         "Margin":(0,0,0,0),
@@ -1181,30 +996,25 @@ class noneWidget(widget):
         "Flip":False
         }
         self.changed = True
-        super(noneWidget, self).__init__(id,"none",style)
+        super(noneWidget, self).__init__(id,None,style)
 
 class popoutWidget(widget):
 
-    def redrawpopout(self,surfacein,last):
+    def redrawpopout(self,surfacein):
         global drawy
         global drawx
-        self.w = 0
-        self.h = 0
-        past = ""
         #print(self.absy)
         #print(self.absx)
         #print(self.style)
         self.styleize(self.style)
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
         for x in self.children:
-            x.redraw(surfacein,last)
+            x.redraw(surfacein)
 
-    def redraw(self,surfacein,last):
+    def redraw(self,surfacein):
         pass
 
     def add(self,parent):
-        if parent != "none":
+        if parent != None:
             if isinstance(parent,widget):
                 self.parentref = self.parent
                 self.parentref.popouts.append(self)
@@ -1217,7 +1027,6 @@ class popoutWidget(widget):
             self.parentref = None
 
     def __init__(self,id,parent,style,data={}):
-        self.pygame = pygame
         self.children = []
         self.popouts = []
         self.style = {
@@ -1226,7 +1035,7 @@ class popoutWidget(widget):
         "Color":(255,255,255),
         "ActiveColor":(200,200,200),
         "InactiveColor":(155,155,155),
-        "Background":"None",
+        "Background":None,
         "Justification":"left top",
         "Padding":(0,0,0,0),
         "Margin":(0,0,0,0),
@@ -1271,13 +1080,10 @@ class textWidget(widget):
         else:
             return num
 
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         global drawy
         global drawx
-        past = ""
         self.styleize(self.style)
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
 
         if self.lasttext != self.text:
             self.chars=[]
@@ -1291,8 +1097,8 @@ class textWidget(widget):
             gh = 0
             gw = 0
             lw = 0
-            drawy = 0
-            drawx = 0
+            drawy -= self.y
+            drawx -= self.x
             self.wrapedhight = 0
             self.wrapedwidth = 0
             self.tsurf = pygame.Surface((dw,dh))
@@ -1300,7 +1106,7 @@ class textWidget(widget):
             self.tsurf.fill((0,0,0,0))
             for x in self.chars:
                 if (( not self.wrapwidth <= 0 and self.wrapwidth < lw)
-                or "Break" in x.data or (past != "" and "EndBreak" in past.data)):
+                or "Break" in x.data or ( "EndBreak" in x.data)):
                     drawy += gh
                     #print("S")
                     self.wrapedhight += gh
@@ -1313,7 +1119,7 @@ class textWidget(widget):
                 x.y = drawy
                 x.x = drawx
                 #print(x)
-                x.redraw(self.tsurf,last)
+                x.redraw(self.tsurf)
                 if "Break" not in x.data:
                     gw += x.w
                     lw += x.w
@@ -1332,7 +1138,7 @@ class textWidget(widget):
         drawx = self.x#+self.w
         drawy = self.y
         #print(self.w)
-        self.drawPopouts(surfacein,last)
+        self.drawPopouts(surfacein)
     """docstring for Text Object."""
 
     def __init__(self,id=randid,parent="main",style={},data={},wrapwidth=-1):
@@ -1363,10 +1169,11 @@ class charWidget(widget):
             return num
 
     """A Text Widget"""
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         #self.draworign(surfacein)
         if self.font != self.lastfont:
-            dynamicFont = Font(self.font["File"], self.font["Scale"])
+            filepath = self.font["File"].replace("./",str(path)+"/")
+            dynamicFont = Font(filepath, self.font["Scale"])
             self.realfont = dynamicFont
             self.realfont.underline = self.font["Underline"]
             self.realfont.italic = self.font["Italics"]
@@ -1412,14 +1219,13 @@ class charWidget(widget):
             #textRect = textSurface.get_rect()
             #print(fullTextRect)
             self.textRect = textRect
-            #self.parentref.changed = True
             drawx += self.padding[2]+self.margin[2]
             drawy += self.padding[3]+self.margin[3]
             self.changed=False
         #self.draworign(surfacein)
         #print(drawx)
         #print(self.text)
-        super(charWidget, self).redraw(surfacein,self)
+        super(charWidget, self).redrawInBox(surfacein)
         #print(drawx)
         #print(self.color)
         textRect = self.surf.get_rect()
@@ -1441,13 +1247,12 @@ class charWidget(widget):
         self.textRect = textRect
         if self.gradient != None:
             if "text" in self.gradient["types"]:
-                surfTextRect = self.textRect.copy()
+                surfTextRect = self.textRect
                 surfTextRect = surfTextRect.move(self.x,self.y)
                 try:
                     #print(surfTextRect)
                     #print(self.surf)
                     surf = self.surf.subsurface(surfTextRect)
-                    surf = surf.copy()
                     colors.gradientizewhite(surf, self.gradient["base"], self.gradient["end"],
                     vertical=self.gradient["vert"],flip=self.gradient["flip"]
                     ,forward=self.gradient["inverse"])
@@ -1472,7 +1277,7 @@ class charWidget(widget):
         "W":"self.textRect[2]"
         }
         self.lasttext=""
-        self.ignore=["Text","Border","Round","Background"]
+        self.ignore=["Text","Border","Round","Background","Padding","Margin"]
         super(charWidget, self).__init__(id,parent,style,data)
 
 class oldtextWidget(widget):
@@ -1490,7 +1295,7 @@ class oldtextWidget(widget):
             return num
 
     """A Text Widget"""
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         #self.draworign(surfacein)
         fullTextRect = pygame.Rect(0,0,0,0)
         if self.changed == True:
@@ -1548,24 +1353,22 @@ class oldtextWidget(widget):
             #textRect = textSurface.get_rect()
             #print(fullTextRect)
             self.textRect = fullTextRect
-            #self.parentref.changed = True
             drawx += self.padding[2]+self.margin[2]
             drawy += self.padding[3]+self.margin[3]
         #self.draworign(surfacein)
         #print(drawx)
         #print(drawy)
-        super(textWidget, self).redraw(surfacein,self)
+        super(textWidget, self).redrawInBox(surfacein)
         #print(drawx)
         #print(self.color)
         if self.gradient != None:
             if "text" in self.gradient["types"]:
-                surfTextRect = self.textRect.copy()
+                surfTextRect = self.textRect
                 surfTextRect = surfTextRect.move(self.x,self.y)
                 try:
                     #print(surfTextRect)
                     #print(self.surf)
                     surf = self.surf.subsurface(surfTextRect)
-                    surf = surf.copy()
                     colors.gradientizewhite(surf, self.gradient["base"], self.gradient["end"],
                     vertical=self.gradient["vert"],flip=self.gradient["flip"]
                     ,forward=self.gradient["inverse"])
@@ -1593,23 +1396,19 @@ class oldtextWidget(widget):
 
 class hprogressWidget(widget):
     """A Progress Bar Widget"""
-    def redraw(self,surfacein,last):
-        if self.changed == True:
-                v = True
-                self.parentref.changed = True
-        super(hprogressWidget, self).redraw(surfacein,self)
-        if v:
-            if self.color != "none":
-                if self.flip:
-                    rect = self.pygame.Rect(
+    def redrawInBox(self,surfacein):
+        super(hprogressWidget, self).redrawInBox(surfacein)
+        if self.color != None:
+            if self.flip:
+                    rect = pygame.Rect(
                     self.x+self.w-(self.w*self.fillvalue),
                     self.y,
                     self.w*self.fillvalue
                     ,self.h)
-                else:
-                    rect = self.pygame.Rect(self.x,self.y,
+            else:
+                    rect = pygame.Rect(self.x,self.y,
                     self.w*self.fillvalue,self.h)
-                self.pygame.draw.rect(surfacein,self.color, rect,0,
+            pygame.draw.rect(surfacein,self.color, rect,0,
                 border_top_left_radius=self.round[0],
                 border_bottom_left_radius=self.round[3],
                 border_top_right_radius=self.round[1],
@@ -1618,30 +1417,26 @@ class hprogressWidget(widget):
 
 class vprogressWidget(widget):
     """A Progress Bar Widget"""
-    def redraw(self,surfacein,last):
-        if self.changed == True:
-                v = True
-                self.parentref.changed = True
-        super(vprogressWidget, self).redraw(surfacein,self)
-        if v:
-            if self.color != "none":
+    def redrawInBox(self,surfacein):
+        super(vprogressWidget, self).redrawInBox(surfacein)
+        if self.color != None:
                 #print( str( (self.h)-(self.h*self.fillvalue)+(self.h*self.fillvalue) ) )
                 #print(self.y)
                 if self.flip:
-                    rect = self.pygame.Rect(
+                    rect = pygame.Rect(
                     self.x,
                     (self.y)+self.h-(self.h*self.fillvalue),
                     self.w,
                     (self.h*self.fillvalue)
                     )
                 else:
-                    rect = self.pygame.Rect(
+                    rect = pygame.Rect(
                     self.x,
                     self.y,
                     self.w,
                     (self.h*self.fillvalue)
                     )
-                self.pygame.draw.rect(surfacein,self.color,rect
+                pygame.draw.rect(surfacein,self.color,rect
                 ,0,
                 border_top_left_radius=self.round[0],
                 border_bottom_left_radius=self.round[3],
@@ -1650,19 +1445,18 @@ class vprogressWidget(widget):
                 )
 
 class arcProgressWidget(widget):
-    def redraw(self,surfacein,last):
-        super(arcProgressWidget, self).redraw(surfacein, last)
+    def redrawInBox(self,surfacein):
+        super(arcProgressWidget, self).redrawInBox(surfacein)
         if self.flip: inc = -1
         else: inc = 1
-        imgc = self.img.copy()
-        imgc = self.pygame.transform.scale(imgc, (int(self.w/3), int(self.h/2)))
+        imgc = self.img
+        imgc = pygame.transform.scale(imgc, (int(self.w/3), int(self.h/2)))
         #print(self.angle)
         #print(inc,self.fillvalue,self.maxangle)
         angle = (inc*self.fillvalue*self.maxangle)-self.angle
         imgc,imgr = rot_center(imgc, imgc.get_rect(), angle)
         imgr.center = (self.w/2,self.h/2)
         surfacein.blit(imgc,(self.x+imgr[0],self.y+imgr[1]))
-        self.parentref.changed = True
 
     def __init__(self,id,parent,style,data={}):
         path = pathlib.Path(__file__).parent.resolve()
@@ -1680,27 +1474,445 @@ class arcProgressWidget(widget):
 
 # Orginization  11
 
-class vlistWidget(widget):
-    def redraw(self,surfacein,last):
+class listWidget(widget):
+
+    def prossesinputs(self, eventname, event, surface, globals):
+        super(listWidget, self).prossesinputs(eventname, event, surface, globals)
+        self.scrollx.prossesinputs(eventname, event, surface, globals)
+        self.scrolly.prossesinputs(eventname, event, surface, globals)
+
+    def u_dwrapscrollredraw(self,surfacein):
         global drawy
         global drawx
-        past = ""
-        #self.vfitchildren()
-        #self.hlargest()
-        #print(drawy)
+        x = 0 if self.x<0 else self.x
+        y = 0 if self.y<0 else self.y
+        w = dw-self.x if (self.w+self.x)>dw else self.w
+        h = dh-self.y if (self.h+self.y)>dh else self.h
+        surf = surfacein.subsurface((x,y,w,h))
+        drawx = 0
+        drawy = 0
+        xoffset = 0
+        gh = 0
+        gw = 0
+        self.wrapedhight = 0
+        self.wrapedwidth = 0
+        lw=0
+        lh=0
+        scx=self.scrollx
+        scy=self.scrolly
+        bx = self.barx
+        by = self.bary
+        ofx = (scx.rx/( self.w - bx.w))*(self.wrapfitw()-self.w)
+        ofy = (scy.ry/( self.h - by.h))*(self.vlargest()-self.h)
+        drawx -= ofx
+        drawy -= ofy
+        for x in self.children:
+            if (( not self.wrapwidth <= 0 and self.wrapwidth <= drawy)
+            or "Break" in x.data or ( "EndBreak" in x.data)):
+                xoffset += gw
+                self.wrapedhight = gh
+                self.wrapedwidth += gw
+                drawy = 0 - ofy
+                gw = x.w
+            drawx = xoffset+ofx
+            x.y = drawy
+            x.x = drawx
+            #print(x.y)
+            x.redraw(surf)
+            if "Break" not in x.data:
+                gh += x.h
+            if gh < x.h:
+                gh = x.h
+            if gw < x.w:
+                gw = x.w
+            #drawy += x.h
+            drawy += x.h
+        #print(self.w)
+        #print(by.h,len(self.children),self.wrapedhight,by.h*len(self.children))
+        self.wrapedwidth += gw
+        drawx = self.x
+        drawy = self.y + self.h
+        if self.wrapedwidth>self.w :
+            scx.y = drawy
+            scx.x = drawx#+self.w
+            scx.w = self.w
+            bx.w = ( ( ( self.w / self.wrapfitw() ) ) * self.w )
+            scx.redraw(surfacein)
+        drawx=self.x
+        drawy=self.y
+        self.drawPopouts(surfacein)
+
+    def u_dwrapredraw(self,surfacein):
+        global drawy
+        global drawx
+        xoffset = 0
+        gh = 0
+        gw = 0
+        self.wrapedhight = 0
+        self.wrapedwidth = 0
+        for x in self.children:
+            if (( not self.wrapwidth < 0 and self.wrapwidth < drawy+self.y)
+            or "Break" in x.data or ( "EndBreak" in x.data)):
+                xoffset += gw
+                self.wrapedhight = gh
+                self.wrapedwidth += gw
+                drawy = self.y
+            drawx = self.x+xoffset
+            x.y = drawy
+            x.x = drawx
+            #print(x)
+            x.redraw(surfacein)
+            if "Break" not in x.data:
+                gh += x.h
+            if gh < x.h:
+                gh = x.h
+            if gw < x.w:
+                gw = x.w
+            #drawy += x.h
+            drawy += x.h
+        drawx = self.x
+        #print(self.w)
+        drawx=self.x
+        drawy=self.y#+self.h
+        self.wrapedhight += gh
+        self.drawPopouts(surfacein)
+
+    def r_lwrapscrollredraw(self,surfacein):
+        global drawy
+        global drawx
         #print(self.id,(self.x,self.y,self.w,self.h),(drawx,drawy))
-        self.styleize(self.style)
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
+        x = 0 if self.x<0 else self.x
+        y = 0 if self.y<0 else self.y
+        w = dw-self.x if (self.w+self.x)>dw else self.w
+        h = dh-self.y if (self.h+self.y)>dh else self.h
+        surf = surfacein.subsurface((x,y,w,h))
+        drawx = 0
+        drawy = 0
+        yoffset = 0
+        gh = 0
+        gw = 0
+        lw=0
+        lh=0
+        scx=self.scrollx
+        scy=self.scrolly
+        bx = self.barx
+        by = self.bary
+        ofx = (scx.rx/( self.w - bx.w))*(self.hlargest()-self.w)
+        ofy = (scy.ry/( self.h - by.h))*(self.wraplargesth()-scy.h)
+        drawx -= ofx
+        drawy -= ofy
+        self.wrapedhight = 0
+        self.wrapedwidth = 0
+
+        for x in self.children:
+            if (( not self.wrapwidth <= 0 and self.wrapwidth <= drawx)
+            or "Break" in x.data or ( "EndBreak" in x.data)):
+                yoffset += gh
+                self.wrapedhight += gh
+                self.wrapedwidth = gw
+                drawx = 0 - ofx
+                gh = x.h
+            drawy = yoffset-ofy
+            x.y = drawy
+            x.x = drawx
+            #print(x.y)
+            x.redraw(surf)
+            if "Break" not in x.data:
+                gw += x.w
+            if gh < x.h:
+                gh = x.h
+            if gw < x.w:
+                gw = x.w
+            #drawy += x.h
+            drawx += x.w
+        #print(self.w)
+        self.wrapedhight += gh
+        drawx = self.x + self.w
+        drawy = self.y
+        if self.wrapedhight>self.h :
+            scy.y = drawy
+            scy.x = drawx#+self.w
+            scy.h = self.h
+            by.h = ( ( ( scy.h / self.wraplargesth() ) ) * scy.h )
+            scy.redraw(surfacein)
+        drawx=self.x
+        drawy=self.y
+        if self.wrapedhight>self.h :
+            self.w+=scy.w
+        self.drawPopouts(surfacein)
+
+    def r_lwrapredraw(self,surfacein):
+        global drawy
+        global drawx
+        yoffset = 0
+        gh = 0
+        gw = 0
+        itx = 0
+        self.wrapedhight = 0
+        self.wrapedwidth = 0
+        for x in self.children:
+            drawy = self.y+yoffset
+            x.y = drawy
+            x.x = drawx
+            #print(x)
+            x.redraw(surfacein)
+            if "Break" not in x.data:
+                gw += x.w
+            if gh < x.h:
+                gh = x.h
+            if gw < x.w:
+                gw = x.w
+            #drawy += x.h
+            drawx += x.w
+            itx += x.w
+            #print(itx)
+            if (( not self.wrapwidth < 0 and self.wrapwidth <= itx)
+            or "Break" in x.data or ( "EndBreak" in x.data)):
+                yoffset += gh
+                self.wrapedhight += gh
+                self.wrapedwidth = gw
+                drawx = self.x
+                gh = x.h
+                itx = 0
+        drawx = self.x
+        #print(self.w)
+        drawx=self.x
+        drawy=self.y#+self.h
+        self.wrapedhight += gh
+        self.drawPopouts(surfacein)
+
+    def hscrollredraw(self,surfacein):
+        global drawy
+        global drawx
+        x = 0 if self.x<0 else self.x
+        y = 0 if self.y<0 else self.y
+        w = dw-self.x if (self.w+self.x)>dw else self.w
+        h = dh-self.y if (self.h+self.y)>dh else self.h
+        surf = surfacein.subsurface((x,y,w,h))
+        drawx = 0
+        drawy = 0
+        lw=0
+        lh=0
+        scx=self.scrollx
+        scy=self.scrolly
+        bx = self.barx
+        by = self.bary
+        ofx = (scx.rx/( self.w - bx.w))*(self.hfitchildren()-self.w)
+        ofy = (scy.ry/( self.h - by.h))*(self.vlargest()-self.h)
+        drawx -= ofx
+        drawy -= ofy
+        for x in self.children:
+            drawy = 0 -ofy
+            x.y = drawy
+            x.x = drawx
+            x.redraw(surf)
+            lw+=x.w
+            if x.h>lh:
+                lh=x.h
+            drawx = lw-ofx
+        drawx = self.x
+        drawy = self.y + self.h
+        if lw>self.w or self.ovx=="scroll":
+            scx.y = drawy# + self.h
+            scx.x = drawx
+            scx.w = self.w
+            bx.w = ( ( ( self.w / self.hfitchildren() ) ) * self.w )
+            #print(bx.w,len(self.children),self.w,bx.w*len(self.children))
+            scx.redraw(surfacein)
+        drawx = self.x + self.w
+        drawy = self.y
+        if lh>self.h :
+            scy.y = drawy
+            scy.x = drawx#+self.w
+            scy.h=self.h
+            by.h = ( ( ( self.h / self.vlargest() ) ) * self.h )
+            scy.redraw(surfacein)
+        drawx = self.x
+        drawy = self.y
+        if lw>self.w or self.ovx=="scroll":
+            self.h+=self.scrollx.h
+        if lh>self.h :
+            self.w+=self.scrolly.w
+        self.drawPopouts(surfacein)
+
+    def hredraw(self,surfacein):
+        global drawy
+        global drawx
+        if self.ovx == "hidden":
+            surf = surfacein.subsurface(
+            (self.x,self.y,self.w,self.h))
+        else:
+            surf = surfacein
+        for x in self.children:
+            drawy=self.y
+            x.y = drawy
+            x.x = drawx
+            x.redraw(surf)
+            drawx += x.w
+        drawx = self.x
+        drawy = self.y
+        self.drawPopouts(surfacein)
+
+    def vscrollredraw(self,surfacein):
+        global drawy
+        global drawx
+        x = 0 if self.x<0 else self.x
+        y = 0 if self.y<0 else self.y
+        w = dw-self.x if (self.w+self.x)>dw else self.w
+        h = dh-self.y if (self.h+self.y)>dh else self.h
+        surf = surfacein.subsurface((x,y,w,h))
+        lw=0
+        lh=0
+        scx=self.scrollx
+        scy=self.scrolly
+        bx = self.barx
+        by = self.bary
+        drawx = 0
+        drawy = 0
+        ofx = (scx.rx/( self.w - bx.w))*(self.hlargest()-self.w)
+        ofy = (scy.ry/( self.h - by.h))*(self.vfitchildren()-self.h)
+        #print(bx.h,len(self.children),self.h,bx.h*len(self.children), self.vfitchildren(),ofy)
+        drawx -= ofx
+        drawy -= ofy
+        for x in self.children:
+            drawx = 0 -ofx
+            x.y = drawy
+            x.x = drawx
+            x.redraw(surf)
+            if x.w>lw:
+                lw=x.w
+            lh+=x.h
+            drawy = lh-ofy
+        drawx = self.x + self.w
+        drawy = self.y
+        if lh>self.h or self.ovy=="scroll":
+            scy.y = drawy
+            scy.x = drawx#+self.w
+            scy.h=self.h
+            by.h = ( ( ( self.h / self.vfitchildren() ) ) * self.h )
+            scy.redraw(surfacein)
+        drawx = self.x
+        drawy = self.y + self.h
+        if lw>self.w :
+            scx.y = drawy#+self.h
+            scx.x = drawx
+            scx.w=self.w
+            bx.w = ( ( ( self.w / self.hlargest() ) ) * self.w )
+            scx.redraw(surfacein)
+        drawx = self.x
+        drawy = self.y
+        if lw>self.w :
+            self.h+=self.scrollx.h
+        if lh>self.h or self.ovy=="scroll":
+            self.w+=self.scrolly.w
+        self.drawPopouts(surfacein)
+
+    def vredraw(self,surfacein):
+        global drawy
+        global drawx
+        if self.ovy == "hidden":
+            surf = surfacein.subsurface(
+            (self.x,self.y,self.w,self.h))
+        else:
+            surf = surfacein
         for x in self.children:
             drawx = self.x
             x.y = drawy
             x.x = drawx
-            x.redraw(surfacein,last)
+            x.redraw(surf)
             drawy += x.h
         drawx = self.x
         drawy = self.y
-        self.drawPopouts(surfacein,last)
+        self.drawPopouts(surfacein)
+
+    def redrawInBox(self,surfacein):
+        #||scroll|auto|initial|inherit
+        if self.display=="vlist":
+            if self.ovy=="auto"or self.ovy=="scroll":
+                self.vscrollredraw(surfacein)
+            else:
+                self.vredraw(surfacein)
+
+        if self.display=="hlist":
+            if self.ovx=="auto" or self.ovx=="scroll":
+                self.hscrollredraw(surfacein)
+            else:
+                self.hredraw(surfacein)
+
+        if self.display=="u-dwrap":
+            if self.ovx=="auto" or self.ovx=="scroll" or self.ovy=="auto" or self.ovy=="scroll":
+                self.u_dwrapscrollredraw(surfacein)
+            else:
+                self.u_dwrapredraw(surfacein)
+
+        if self.display=="r-lwrap":
+            if self.ovx=="auto" or self.ovx=="scroll" or self.ovy=="auto" or self.ovy=="scroll":
+                self.r_lwrapscrollredraw(surfacein)
+            else:
+                self.r_lwrapredraw(surfacein)
+
+    def styleize(self,style):
+        super(listWidget, self).styleize(style)
+
+    def __init__(self, id, parent, style, data):
+        self.scrollx = sliderWidget(id=id+"-scrollx", parent=None, style={
+        "Background":"dgrey",
+        "H":8,
+        "InactiveColor":"grey",
+        "ActiveColor":"lgrey",
+        "Slider":{
+            "x":0,
+            "w":"(self.owner.w)",
+            "h":0,
+            "y":0,
+            "dw":0,
+            "wo":0,
+            "dh":0,
+            "ho":0,
+            "inc":1,
+            "drawinc":5,
+            "notch":[]
+        }}, data={"Test"})
+        self.scrollx.owner=self
+        self.scrolly = sliderWidget(id=id+"-scrolly", parent=None, style={
+        "Background":"dgrey",
+        "W":8,
+        "InactiveColor":"grey",
+        "ActiveColor":"lgrey",
+        "Slider":{
+            "x":0,
+            "w":0,
+            "h":"(self.owner.h)",
+            "y":8,
+            "dw":0,
+            "wo":8,
+            "dh":8,
+            "ho":12,
+            "inc":1,
+            "drawinc":5,
+            "notch":[]
+        }}, data={"Test"})
+        self.scrolly.owner=self
+        self.barx = emptyWidget(id=id+"-BarX", parent=self.scrollx, style={
+        "Text":"",
+        "Color":"black",
+        "H":8,
+        "W":None,
+        "Background":"grey",
+        "Round":(5,5,5,5)
+        })
+        self.bary = emptyWidget(id=id+"-BarY", parent=self.scrolly, style={
+        "Text":"",
+        "Color":"black",
+        "W":8,
+        "H":32,
+        "Background":"grey",
+        "Round":(5,5,5,5)
+        })
+
+        super(listWidget, self).__init__(id,parent,style,data)
+
+class vlistWidget(listWidget):
 
     """docstring for Vertical List."""
 
@@ -1710,26 +1922,9 @@ class vlistWidget(widget):
         "W":"self.hlargest()"
         }
         super(vlistWidget, self).__init__(id,parent,style,data)
+        self.display = "vlist"
 
-class hlistWidget(widget):
-    def redraw(self,surfacein,last):
-        global drawy
-        global drawx
-        past = ""
-        self.styleize(self.style)
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
-        for x in self.children:
-                #offset += past.w
-            #drawy = self.y
-            x.y = drawy
-            x.x = drawx
-            x.redraw(surfacein,last)
-            drawx += x.w
-            #drawy += x.h
-        drawx = self.x
-        drawy = self.y
-        self.drawPopouts(surfacein,last)
+class hlistWidget(listWidget):
     """docstring for List."""
 
     def __init__(self,id=randid,parent="main",style={},data={}):
@@ -1738,49 +1933,9 @@ class hlistWidget(widget):
         "H":"self.vlargest()"
         }
         super(hlistWidget, self).__init__(id,parent,style,data)
+        self.display = "hlist"
 
-class wraplistWidget(widget):
-    def redraw(self,surfacein,last):
-        global drawy
-        global drawx
-        past = ""
-        self.styleize(self.style)
-        self.drawBorder(surfacein)
-        self.drawInterior(surfacein)
-        yoffset = 0
-        gh = 0
-        gw = 0
-        self.wrapedhight = 0
-        self.wrapedwidth = 0
-        for x in self.children:
-            if (( not self.wrapwidth < 0 and self.wrapwidth < drawx+self.x)
-            or "Break" in x.data or (past != "" and "EndBreak" in past.data)):
-                yoffset += gh
-                self.wrapedhight += gh
-                if gw>self.wrapedwidth:
-                    self.wrapedwidth = gw
-                drawx = self.x
-                gh = x.h
-            drawy = self.y+yoffset
-            x.y = drawy
-            x.x = drawx
-            #print(x)
-            x.redraw(surfacein,last)
-            if "Break" not in x.data:
-                gw += x.w
-            if gh < x.h:
-                gh = x.h
-            if gw < x.w:
-                gw = x.w
-            #drawy += x.h
-            drawx += x.w
-        drawx = self.x
-        #print(self.w)
-        drawy=self.y#+self.h
-        self.wrapedhight += gh
-        self.w = self.wrapedwidth
-        self.h = self.wrapedhight
-        self.drawPopouts(surfacein,last)
+class wraplistWidget(listWidget):
     """docstring for List."""
 
     def __init__(self,id=randid,parent="main",style={},data={},wrapwidth=-1):
@@ -1788,30 +1943,23 @@ class wraplistWidget(widget):
         "W":"self.wraplargestw()",
         "H":"self.wraplargesth()"
         }
-        self.data = {
-        "EnsdBreak":True
-        }
         self.wrapwidth = wrapwidth
         super(wraplistWidget, self).__init__(id,parent,style,data)
 
 class absDrawWidget(widget):
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         global drawy
         global drawx
-        self.w = 0
-        self.h = 0
-        past = ""
         self.styleize(self.style)
-        self.drawInterior(surfacein)
 
         for x in self.children:
             x.y = x.absy
             x.x = x.absx
             drawy = x.absy
             drawx = x.absx
-            x.redraw(surfacein,last)
+            x.redraw(surfacein)
 
-        self.drawPopouts(surfacein,last)
+        self.drawPopouts(surfacein)
     """docstring for List."""
 
     def __init__(self,id=randid,parent="main",style={},data={}):
@@ -1822,25 +1970,20 @@ class absDrawWidget(widget):
         super(absDrawWidget, self).__init__(id,parent,style,data)
 
 class overlayWidget(widget):
-    def redraw(self, surfacein, last):
+    def redrawInBox(self, surfacein):
         global drawy
         global drawx
-        self.h = 0
-        self.w = 0
         self.styleize(self.style)
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
         for x in self.children:
             x.y = drawy
             x.x = drawx
-            x.redraw(surfacein,last)
+            x.redraw(surfacein)
             drawx = self.x
             drawy = self.y
-        self.changed = False
         drawx = self.x
         drawy = self.y
 
-        #super(overlayWidget, self).redraw(surfacein,last)
+        #super(overlayWidget, self).redraw(surfacein)
 
     def __init__(self,id=randid,parent="main",style={},data={}):
         self.style = {
@@ -1901,39 +2044,41 @@ class selectWidget(widget):
         return h
 
     def prossesinputs(self,eventname,event,surface,lglobals=None):
-        try:
-            v = eval(self.condition)
-        except Exception as e:
-            #print(e)
-            v = "All"
-        if v == "All":
-            #print(v)
-            super(selectWidget, self).prossesinputs(eventname,event,surface,lglobals)
-        elif v != None:
-            if len(self.children)>v:
-                x = self.children[v]
-                self.children[v].prossesinputs(eventname,event,surface,lglobals)
+        if self.condition != None:
+            try:
+                v = eval(self.condition)
+            except Exception as e:
+                #print(e)
+                v = "All"
+            if v == "All":
+                #print(v)
+                super(selectWidget, self).prossesinputs(eventname,event,surface,lglobals)
+            elif v != None:
+                if len(self.children)>v:
+                    x = self.children[v]
+                    x.prossesinputs(eventname,event,surface,lglobals)
 
-    def redraw(self,surfacein,last):
-        try:
-            v = eval(self.condition)
-        except Exception as e:
-            #print(e)
-            v = "All"
-        if v == "All":
-            #print(v)
-            super(selectWidget, self).redraw(surfacein,last)
-        elif v != None:
-            if len(self.children)>v:
-                x = self.children[v]
-                self.children[v].redraw(surfacein,last)
-                self.w = x.w
-                self.h = x.h
-        elif v == None:
-            self.w = 0
-            self.h = 0
+    def redrawInBox(self,surfacein):
+        if self.condition != None:
+            try:
+                v = eval(self.condition)
+            except Exception as e:
+                #print(e)
+                v = "All"
+            if v == "All":
+                #print(v)
+                super(selectWidget, self).redrawInBox(surfacein)
+            else:
+                if len(self.children)>v:
+                    x = self.children[v]
+                    self.children[v].redraw(surfacein)
+                    self.w = x.w
+                    self.h = x.h
+        else:
+                self.w = 0
+                self.h = 0
             #print(self.h)
-        #super(selectWidget, self).redraw(surfacein,last)
+        #super(selectWidget, self).redrawInBox(surfacein)
 
     def __init__(self, id,parent,condition="",style={},data={}):
         self.condition = condition
@@ -1962,9 +2107,7 @@ class dragWidget(widget):
             #print((self.x,self.y,self.w,self.h) )
             o = surface.get_abs_offset()
             #print(o)
-            #print(self.slidemaxx)
             #print(self.h)
-            #print(self.sliderx,self.w)
             if self.ispressing:
                 #print(self.lx,self.ly)
                 self.dx = ex+self.lx
@@ -1972,10 +2115,7 @@ class dragWidget(widget):
             else:
                 self.dx = self.x
                 self.dy = self.y
-            if (
-            self.w+o[0]+self.x > ex > o[0]+self.x
-            and
-            self.h+o[1]+self.y > ey > o[1]+self.y):
+            if self.testState("hover"):
                 #print("HI")
                 self.mouseover = True
             else:
@@ -1994,7 +2134,7 @@ class dragWidget(widget):
         elif eventname == "Mouseleave":
             self.ispressing = False
 
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         global drawx
         global drawy
         self.styleize(self.style)
@@ -2009,10 +2149,7 @@ class dragWidget(widget):
             x.x = self.dx
             drawx = self.dx
             drawy = self.dy
-            x.redraw(surfacein,last)
-        self.changed = False
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
+            x.redraw(surfacein)
         drawx = self.x
         drawy = self.y
 
@@ -2037,12 +2174,7 @@ class dragSnaplessWidget(dragWidget):
             ex = event.pos[0]
             ey = event.pos[1]
             #print(event.pos)
-            #print((self.x,self.y,self.w,self.h) )
             o = surface.get_abs_offset()
-            #print(o)
-            #print(self.slidemaxx)
-            #print(self.h)
-            #print(self.sliderx,self.w)
             if self.ispressing:
                 self.dx = ex+self.lx
                 self.dy = ey+self.ly
@@ -2090,15 +2222,15 @@ class dropWidget(widget):
                 dragging = None
             self.ispressing = False
 
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         try:
             v = eval(self.condition)
         except:
             v = "All"
         if v == "All":
-            super(dropWidget, self).redraw(surfacein,last)
+            super(dropWidget, self).redrawInBox(surfacein)
         elif len(self.children)>v:
-            self.children[v].redraw(surfacein,last)
+            self.children[v].redraw(surfacein)
 
     def __init__(self, id,parent,style={},data={}):
         self.style = {
@@ -2117,10 +2249,6 @@ class floatyBoxWidget(dragSnaplessWidget,popoutWidget):
             #print(event.pos)
             #print((self.x,self.y,self.w,self.h) )
             o = surface.get_abs_offset()
-            #print(o)
-            #print(self.slidemaxx)
-            #print(self.h)
-            #print(self.sliderx,self.w)
             if self.ispressing:
                 self.dx = ex+self.lx
                 self.dy = ey+self.ly
@@ -2145,26 +2273,21 @@ class floatyBoxWidget(dragSnaplessWidget,popoutWidget):
         elif eventname == "Mouseleave":
             self.ispressing = False
 
-    def redraw(self,surfacein,last):
+    def redraw(self,surfacein):
         pass
 
-    def redrawpopout(self,surfacein,last):
+    def redrawpopout(self,surfacein):
         global drawy
         global drawx
-        self.w = 0
-        self.h = 0
-        past = ""
         self.styleize(self.style)
         drawy = self.dy
         drawx = self.dx
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
         for x in self.children:
             x.y = self.dy
             x.x = self.dx
             drawy = self.dy
             drawx = self.dx
-            x.redraw(surfacein,last)
+            x.redraw(surfacein)
 
 # Inputs    8
 
@@ -2179,9 +2302,7 @@ class buttonWidget(widget):
             #print(self)
             o = surface.get_abs_offset()
             #print(o)  self.x+self.w+o[0] > ex > self.x+o[0] and self.y+self.h+o[1] > ey > self.y+o[1]
-            if (self.sliderx+self.w+o[0]+self.x > ex > self.sliderx+o[0]+self.x
-            and
-            self.slidery+self.h+o[1]+self.y > ey > self.slidery+o[1]+self.y):
+            if self.testState("hover"):
                 #print("HI")
                 self.mouseover = True
                 self.changed = True
@@ -2200,7 +2321,7 @@ class buttonWidget(widget):
             self.ispressing = False
 
     """A Button Widget"""
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         #self.draworign(surfacein)
             #print(mouse)
             #print( (self.x,self.y,self.w,self.h) )
@@ -2212,7 +2333,7 @@ class buttonWidget(widget):
                     self.dbackground = self.activecolor
                 else:
                     self.dbackground = self.inactivecolor
-        super(buttonWidget, self).redraw(surfacein,self)
+        super(buttonWidget, self).redrawInBox(surfacein)
 
     def __init__(self,id=randid,parent="main",action="",style={},data={}):
         self.action = action
@@ -2281,15 +2402,15 @@ class textBoxWidget(widget):
             self.ispressing = False
         elif eventname == "Keydown":
             if self.active:
-                if event.key == self.pygame.K_RETURN:
+                if event.key == pygame.K_RETURN:
                     self.active = False
-                elif event.key == self.pygame.K_BACKSPACE:
+                elif event.key == pygame.K_BACKSPACE:
                     self.mytext = self.mytext[0:-1]
-                elif event.key == self.pygame.K_TAB:
+                elif event.key == pygame.K_TAB:
                     self.mytext += "   "
-                elif event.key == self.pygame.K_DELETE:
+                elif event.key == pygame.K_DELETE:
                     self.mytext = ""
-                elif event.key == self.pygame.K_ESCAPE:
+                elif event.key == pygame.K_ESCAPE:
                     self.active = False
                 else:
                     self.mytext += str(event.unicode)
@@ -2298,7 +2419,7 @@ class textBoxWidget(widget):
         #self.styleize(self.style)
 
     """A Text Input Box Widget"""
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         #action = self.action
         #print( (self.x,self.y,self.w,self.h) )
         #print( (self.x,self.y,self.w,self.h) )
@@ -2310,7 +2431,7 @@ class textBoxWidget(widget):
             self.dbackground = self.activecolor
         else:
             self.dbackground = self.inactivecolor
-        super(textBoxWidget, self).redraw(surfacein,self)
+        super(textBoxWidget, self).redrawInBox(surfacein)
         #if textSurface != None  and textRect != None:
         #    surfacein.blit(textSurface, textRect)
 
@@ -2318,7 +2439,7 @@ class textBoxWidget(widget):
         self.textRect = (0,0,0,0)
         self.action = "self.activate()"
         self.mytext = ""
-        self.dbackground = "None"
+        self.dbackground = None
         self.style = {
         "W":"self.hlargest()",
         "H":"self.vlargest()"
@@ -2336,189 +2457,34 @@ class sliderWidget(widget):
             #print((self.x,self.y,self.w,self.h) )
             o = surface.get_abs_offset()
             #print(o)
-            #print(self.slidemaxx)
             if self.ispressing:
-                lex = ex-(self.w/2)
-                if lex <= self.slidemaxx + self.x:
-                    if lex >= self.slideminx + self.x:
-                        lex = lex - self.x
+                lgx = self.gx
+                lex = ex + lgx - self.x
+                if lex > 0:
+                    if lex + self.hlargest() < self.w :
+                        lex = lex
                     else:
-                        lex = self.slideminx #- self.w
+                        lex = self.w - self.hlargest()
                 else:
-                    lex = self.slidemaxx
-                self.sliderx = round(lex/self.slideinc)*self.slideinc
-                ley = ey-(self.h/2)
-                #print("MouseY: "+str(ley))
-                if ley <= self.slidemaxy + self.y:
-                    if ley >= self.slideminy + self.y:
-                        #print("1")
-                        ley = ley - self.y
+                    lex = 0
+                self.rx = round(lex/self.slider["inc"])*self.slider["inc"]
+                lgy = self.gy
+                ley = ey + lgy - self.y
+                if ley > 0:
+                    if ley + self.vlargest()< self.h:
+                        ley = ley
                     else:
-                        #print("2")
-                        ley = self.slideminy
+                        ley = self.h - self.vlargest()
                 else:
-                    #print("3")
-                    #print(self.slidemaxy+self.y)
-                    ley = self.slidemaxy
-                self.slidery = round(ley/self.slideinc)*self.slideinc
-            #print(self.h)
-            #print(self.sliderx,self.w)
-            if (
-            self.sliderx+self.w+o[0]+self.x > ex > self.sliderx+o[0]+self.x
-            and
-            self.slidery+self.h+o[1]+self.y > ey > self.slidery+o[1]+self.y):
-                #print("HI")
+                    ley = 0
+                self.ry = round(ley/self.slider["inc"])*self.slider["inc"]
+            if self.testState("slidehover"):
                 self.mouseover = True
             else:
-                #if self.changed:
-                #    self.changed = True
                 self.mouseover = False
         elif eventname == "Mousedown" and self.mouseover:
-            self.ispressing = True
-        elif eventname == "Mouseup":
-            self.ispressing = False
-        elif eventname == "Mouseleave":
-            self.ispressing = False
-
-    """A Slider Widget"""
-    def redraw(self,surfacein,last):
-        #action = self.action
-            #print( (self.x,self.y,self.w,self.h) )
-            #print( (self.x,self.y,self.w,self.h) )
-            #print("H"+str(self.h))
-        if self.changed:
-            if self.background != "None":
-                    self.pygame.draw.rect(surfacein, self.background,(
-                    self.x+self.slidewo,
-                    self.y+self.slideho,
-                    self.slidemaxx-self.slideminx+self.slidew
-                    ,self.slidemaxy-self.slideminy+self.slideh
-                    ))
-            #print(self.slidenotch)
-            if self.slideinc > 0 and "w" in self.slidenotch:
-                #print("startticks")
-                r = (self.slidemaxx-self.slideminx+self.slidewo)/self.slidedrawinc
-                r = round(r-.5)
-                r = range(0,r)
-                for i in r:
-                    self.pygame.draw.rect(surfacein, (255,0,0),(
-                    self.x+self.slidewo+(i*self.slidedrawinc),
-                    self.y+self.slideho-(self.slideh/2),
-                    1#self.slidemaxx-self.slideminx+self.slidew+self.w
-                    ,self.slidemaxy-self.slideminy+self.slideh+(self.slideh)
-                    ))
-            if self.slideinc > 0 and "h" in self.slidenotch:
-                #print("startticks")
-                r = (self.slidemaxy-self.slideminy+self.slideho)/self.slidedrawinc
-                r = round(r-.5)
-                r = range(0,r)
-                for i in r:
-                    self.pygame.draw.rect(surfacein, (255,0,0),(
-                    self.x+self.slidewo-(self.slidew/2),
-                    self.y+self.slideho+(i*self.slidedrawinc),
-                    self.slidemaxx-self.slideminx+self.slidew+(self.slidew),
-                    1#self.slidemaxx-self.slideminx+self.slidew+self.w
-                    ))
-                #print("endticks")
-            if self.mouseover:
-                            global ispressing
-                            self.pygame.draw.rect(surfacein, self.activecolor,
-                            (self.sliderx+self.x
-                            ,self.slidery+self.y
-                            ,self.w,self.h))
-                            #DrawText(alttext, (x+(w * .5)), (y+(h * .5)), font, black)
-                            #self.changed = False
-            else:
-                    self.pygame.draw.rect(surfacein, self.inactivecolor,
-                    (self.sliderx+self.x,
-                    self.slidery+self.y,
-                    self.w,self.h))
-                        #DrawText(text, (self.x+(self.w * .5)), (self.y+(h * .5)), font, black)
-
-                    #self.changed = False
-            self.parentref.changed = True
-        global drawy
-        global drawx
-        self.styleize(self.style)
-        self.changed = False
-        drawx = self.slidemaxx-self.slideminx+self.x
-        drawy = self.slidemaxy-self.slideminy+self.y
-        for x in self.children:
-            x.y = self.slidery+drawy
-            x.x = self.sliderx+drawx
-            x.redraw(surfacein,last)
-
-    def __init__(self,id=randid,parent="main",style={},data={}):
-        self.sliderx = 0
-        self.slidery = 0
-        self.slideminx = 0
-        self.slideminy = 0
-        self.slidemaxx = 0
-        self.slidemaxy = 0
-        self.slidew = 0
-        self.slideh = 8
-        self.slidewo = 0
-        self.slideho = 8
-        self.slideinc = -1
-        self.action = ""
-        super(sliderWidget, self).__init__(id,parent,style,data)
-
-class anyPlaceSliderWidget(sliderWidget):
-
-    def prossesinputs(self,eventname,event,surface,globals):
-        super(sliderWidget,self).prossesinputs(eventname,event,surface,globals)
-        if eventname == "Mousemove":
-            ex = event.pos[0]
-            ey = event.pos[1]
-            #print(event.pos)
-            #print((self.x,self.y,self.w,self.h) )
-            o = surface.get_abs_offset()
-            #print(o)
-            #print(self.slidemaxx)
-            if self.ispressing:
-                lex = ex-(self.w/2)
-                if lex <= self.slidemaxx + self.x:
-                    if lex >= self.slideminx + self.x:
-                        lex = lex - self.x
-                    else:
-                        lex = self.slideminx #- self.w
-                else:
-                    lex = self.slidemaxx
-                self.sliderx = round(lex/self.slideinc)*self.slideinc
-                ley = ey-(self.h/2)
-                #print("MouseY: "+str(ley))
-                if ley <= self.slidemaxy + self.y:
-                    if ley >= self.slideminy + self.y:
-                        #print("1")
-                        ley = ley - self.y
-                    else:
-                        #print("2")
-                        ley = self.slideminy
-                else:
-                    #print("3")
-                    #print(self.slidemaxy+self.y)
-                    ley = self.slidemaxy
-                self.slidery = round(ley/self.slideinc)*self.slideinc
-            #print(self.h)
-            #print(self.sliderx,self.w)
-
-            h = self.slidemaxy-self.slideminy+self.slideh
-            w = self.slidemaxx-self.slideminx+self.slidew
-            #print(w,h)
-            if (
-            w+o[0]+self.x+self.slidewo > ex > o[0]+self.x+self.slidewo
-            and
-            h+o[1]+self.y+self.slideho > ey > o[1]+self.y+self.slideho):
-                #print("HI")
-                self.mouseover = True
-            else:
-                #if self.changed:
-                #    self.changed = True
-                self.mouseover = False
-        elif eventname == "Mousedown" and self.mouseover:
-            if not self.ispressing:
-                #print("Action"+str(self.action))
-                exec(self.action,globals)
+            self.gx =  self.x - event.pos[0] + self.rx
+            self.gy =  self.y - event.pos[1] + self.ry
             self.ispressing = True
         elif eventname == "Mouseup":
             self.ispressing = False
@@ -2527,21 +2493,69 @@ class anyPlaceSliderWidget(sliderWidget):
             self.mouseover = False
 
     """A Slider Widget"""
+    def redrawInBox(self,surfacein):
+        #action = self.action
+            #print( (self.x,self.y,self.w,self.h) )
+            #print( (self.x,self.y,self.w,self.h) )
+            #print("H"+str(self.h))
+        self.styleize(self.style)
+        #print(self.slidenotch)
+        if self.slider["inc"] > 0 and "w" in self.slider["notch"]:
+                #print("startticks")
+                r = (self.w)/self.slider["drawinc"]
+                r = round(r-.5)
+                r = range(0,r)
+                for i in r:
+                    pygame.draw.rect(surfacein, (255,0,0),(
+                    self.x + ((i+1)*self.slider["drawinc"]),
+                    self.y - (self.h/10),
+                    1,
+                    self.h + (self.h/5)
+                    ))
+        if self.slider["inc"] > 0 and "h" in self.slider["notch"]:
+                #print("startticks")
+                r = (self.h)/self.slider["drawinc"]
+                r = round(r-.5)
+                r = range(0,r)
+                for i in r:
+                    pygame.draw.rect(surfacein, (255,0,0),(
+                    self.x - (self.w/10),
+                    self.y + ((i+1)*self.slider["drawinc"]),
+                    self.w + (self.w/5),
+                    1
+                    ))
+        global drawy
+        global drawx
+        drawx = self.rx+self.x
+        drawy = self.ry+self.y
+        #print(self.x,self.y,self.w,self.h,self.rx,self.ry,self.gx,self.gy)
+        for x in self.children:
+            x.y = drawy
+            x.x = drawx
+            x.redraw(surfacein)
+
+        drawx = self.x
+        drawy = self.y
+
+    def __init__(self,id=randid,parent="main",style={},data={}):
+        self.action = ""
+        self.gx=0
+        self.gy=0
+        super(sliderWidget, self).__init__(id,parent,style,data)
 
 class checkWidget(switchWidget):
 
     """A Check Box Widget"""
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         action = self.action
             #print(mouse)
             #print( (self.x,self.y,self.w,self.h) )
             #print( (self.x,self.y,self.w,self.h) )
             #print("H"+str(self.h))
             #print(self.w)
-        super(checkWidget, self).redraw(surfacein,self)
+        super(checkWidget, self).redrawInBox(surfacein)
         if self.active:
-            #imgc = checkmarkimg.copy()
-            self.img = self.pygame.transform.scale(self.img, (int(self.w), int(self.h)))
+            self.img = pygame.transform.scale(self.img, (int(self.w), int(self.h)))
             surfacein.blit(self.img,(self.x,self.y))
 
     def __init__(self,id=randid,parent="main",style={},data={}):
@@ -2584,20 +2598,20 @@ class dropdown(widgetCollection):
         #print(r.parent)
         textWidget(id=text+"-t", parent=r, style={
         "Text":text,
-        "Background":"None"
+        "Background":None
         }, data={})
 
     def open(self):
         x = self.l.find(str(self.id)+"-s")
-        if x.condition == "None":
-            x.condition = "'All'"
+        if x.condition == None:
+            x.condition = "All"
         else:
-            x.condition = "None"
+            x.condition = None
 
     def create(self, id, parent):
         self.id = id
         ov = vlistWidget(id=id, parent=parent, style={"ABSX":"drawx","ABSY":"drawy"}, data={"HI":"o"})
-        ov.out = True
+        #ov.out = True
         #print(ov.parentref)
         l = vlistWidget(id=str(id)+"-ml",parent=ov,style={
         "H":"self.vfitchildren()",
@@ -2616,10 +2630,10 @@ class dropdown(widgetCollection):
         },data={"dropdown":self})
         textWidget(id=str(id)+"-bt", parent=but, style={
         "Text":"self.vl.radiovalue",
-        "Background":"None"
+        "Background":None
         }, data={})
         sw = selectWidget(id=str(id)+"-s", parent=l,
-        condition="None", style={
+        condition=None, style={
 
         },data={})
         vl = vlistWidget(id=str(id)+"-vl",parent=sw,style={
@@ -2638,7 +2652,7 @@ class dropdown(widgetCollection):
 
 class imageWidget(widget):
     """A Image Widget"""
-    def redraw(self,surfacein,last):
+    def redrawInBox(self,surfacein):
         global drawy
             #print(mouse)
             #print( (self.x,self.y,self.w,self.h) )
@@ -2648,13 +2662,13 @@ class imageWidget(widget):
         #print(self.id,(self.x,self.y,self.w,self.h),(drawx,drawy))
         if self.changed:
             if hasattr(self,"img") :
-                imgc = self.img.copy()
-                imgc = self.pygame.transform.scale(imgc, (int(self.w), int(self.h)))
+                imgc = self.img
+                imgc = pygame.transform.scale(imgc, (int(self.w), int(self.h)))
                 imgc,imgr = rot_center(imgc, imgc.get_rect(), self.angle)
                 #imgr.center(self.img)
                 self.imgr = imgr
                 surfacein.blit(imgc,(self.x+imgr[0],self.y+imgr[1]))
-        super(imageWidget, self).redraw(surfacein,self)
+        super(imageWidget, self).redrawInBox(surfacein)
 
     def __init__(self,id=randid,parent="main",style={},data={}):
         self.style = {
@@ -2666,6 +2680,8 @@ class imageWidget(widget):
 class canvasWidget(widget):
 
     def copy(self,newid=randid,newparent=None):
+        global randid
+        randid+=1
         if newparent == None:
             newparent = self.parentref
         o = type(self)(id=newid, parent=newparent, style=self.style)
@@ -2680,12 +2696,9 @@ class canvasWidget(widget):
         self.draws.append((type,color,points,width))
         self.redrawtime = True
 
-    def redraw(self, surfacein, last):
+    def redrawInBox(self, surfacein):
         global drawy
         global drawx
-        past = ""
-        self.drawInterior(surfacein)
-        self.drawBorder(surfacein)
         if self.redrawtime:
             try:
                 self.mysurface = pygame.Surface((self.w,self.h))
@@ -2702,13 +2715,13 @@ class canvasWidget(widget):
                         x2 = d[2][1][0]
                         y2 = d[2][1][1]
                         #print((x1,y1),(x2,y2))
-                        self.pygame.draw.line(self.mysurface, d[1],(x1,y1),(x2,y2),d[3] )
+                        pygame.draw.line(self.mysurface, d[1],(x1,y1),(x2,y2),d[3] )
                     if d[0] == "Arc":
                         x = d[2][0][0]
                         y = d[2][0][1]
                         h = d[2][0][2]
                         w = d[2][0][3]
-                        self.pygame.draw.arc(self.mysurface, d[1], (x,y,w,h), d[2][1], d[2][2], d[3])
+                        pygame.draw.arc(self.mysurface, d[1], (x,y,w,h), d[2][1], d[2][2], d[3])
                     if d[0] == "Ellipse":
                         x = d[2][0]
                         y = d[2][1]
@@ -2731,7 +2744,7 @@ class canvasWidget(widget):
         else:
             surfacein.blit(self.mysurface,(drawx,drawy))
         self.styleize(self.style)
-        #super(overlaywidget, self).redraw(surfacein,last)
+        #super(overlaywidget, self).redrawInBox(surfacein)
 
     def __init__(self,id,parent,x=0,y=0,w=256,h=256,style={},data={}):
         self.draws = []
@@ -2740,6 +2753,8 @@ class canvasWidget(widget):
 
 class graphWidget(widget):
     def copy(self,newid=randid,newparent=None):
+        global randid
+        randid+=1
         if newparent == None:
             newparent = self.parentref
         o = type(self)(id=newid, parent=newparent, style=self.style)
@@ -2761,11 +2776,9 @@ class graphWidget(widget):
         self.lys.append(y)
         self.plotchanged = True
 
-    def redraw(self, surfacein, last):
+    def redrawInBox(self, surfacein):
         global drawy
         global drawx
-        past = ""
-        self.changed = False
         self.styleize(self.style)
         if self.plotchanged:
             fig = pylab.figure(
@@ -2786,7 +2799,7 @@ class graphWidget(widget):
             self.plotchanged = False
         else:
             surfacein.blit(self.grid, (self.x,self.y))
-        #super(overlaywidget, self).redraw(surfacein,last)
+        #super(overlaywidget, self).redrawInBox(surfacein)
 
     def __init__(self,id,parent,style={},data={}):
         self.pxs = []
@@ -2798,14 +2811,7 @@ class graphWidget(widget):
         super(graphWidget, self).__init__(id, parent, style)
 
 class emptyWidget(widget):
-
-    def prossesinputs(self,eventname,event,surface,globals):
-        pass
-        #super(noneWidget, self).prossesinputs(eventname, event, surface, self.globals)
-
-    def redraw(self,surfacein,last):
-        pass
-        #super(noneWidget, self).redraw(surfacein,last)
+    pass
 
 class dataWidget(widget):
 
@@ -2813,9 +2819,9 @@ class dataWidget(widget):
         pass
         #super(noneWidget, self).prossesinputs(eventname, event, surface, self.globals)
 
-    def redraw(self,surfacein,last):
+    def redraw(self,surfacein):
         pass
-        #super(noneWidget, self).redraw(surfacein,last)
+        #super(noneWidget, self).redrawInBox(surfacein)
 
 
 #print(len(widget.__subclasses__()))
@@ -2833,7 +2839,7 @@ looping = True
 
 clock = pygame.time.Clock()
 
-variablestr = """str(str(sl.slidery)+","+str(sl.sliderx))"""
+variablestr = """str(str(sl.ry)+","+str(sl.rx))"""
 text = "Hello"
 path = pathlib.Path(__file__).parent.resolve()
 #print(path)

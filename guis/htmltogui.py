@@ -194,7 +194,7 @@ def renderframe(events,display,skipevents=False,screen=None):
                 pygame.display.update()
             if  event.type == WINDOWLEAVE:
                 screen.prossesinputs("Mouseleave",event,display,globals())
-    screen.redraw(display,"none")
+    screen.redraw(display)
     #pygame.display.update()
 
 def openfile(file):
