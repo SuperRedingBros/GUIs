@@ -102,6 +102,49 @@ and
 to
 ["blah"," ","blah"]
 
+textWidget {
+    Background: red;
+}
+
+textWidget + textWidget {
+    Background: limegreen;
+}
+
+vlistWidget,textWidget {
+    Color: blue;
+}
+
+.class ~ textWidget {
+    Color: lightblue;
+}
+
+radioWidget {
+    Background: lgrey;
+}
+
+radioWidget:hover {
+    Background: grey;
+}
+
+radioWidget:active {
+    Background: yellow;
+}
+
+p::first-line {
+    color: yellow;
+}
+
+div > p {
+    padding: 32px;
+}
+
+p + p  p{
+    color: green;
+}
+
+#img + p {
+    color: limegreen;
+}
 
 """
 
@@ -313,7 +356,7 @@ class cssparser(object):
                     stack.append(ltext)
                 else:
                     if ltext:
-                        list[" #Divider# ".join(stack)]=csstodict(ltext)
+                        list[" ### ".join(stack)]=csstodict(ltext)
                     stack.pop(-1)
                 text = text[s[1]:]
                 #data = csstodict(data)
@@ -325,7 +368,7 @@ class cssparser(object):
             else:
                 looping=False
         self.data = list
-        #print(json.dumps(list,indent=3))
+        print(json.dumps(list,indent=3))
         return list
 
     def feed(self,text):

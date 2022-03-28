@@ -58,49 +58,10 @@ dragging = None
 parser = css.cssparser()
 
 parser.feed("""
-
-    textWidget {
-        Background: red;
-    }
-
-    textWidget + textWidget {
-        Background: limegreen;
-    }
-
-    vlistWidget,textWidget {
-        Color: blue;
-    }
-
-    .class ~ textWidget {
-        Color: lightblue;
-    }
-
-    radioWidget {
-        Background: lgrey;
-    }
-
-    radioWidget:hover {
-        Background: grey;
-    }
-
-    radioWidget:active {
-        Background: yellow;
-    }
-
-    p::first-line {
-        color: yellow;
-    }
-
-    div > p {
-        padding: 32px;
-    }
-
-    p + p  p{
-        color: green;
-    }
-
-    #img + p {
-        color: limegreen;
+    @media screen and (min-width: 480px) {
+        textWidget {
+            Color:red;
+        }
     }
     """)
 parser.parse()
@@ -319,7 +280,7 @@ class widget(object):
             and
             self.ry+self.y+self.vlargest() > ey > self.ry+self.y
             )
-            print(ex,ey)
+            #print(ex,ey)
             return b
         elif state=="active":
             ex,ey = pygame.mouse.get_pos()
@@ -1073,7 +1034,6 @@ class textWidget(widget):
             return num
 
     def textboxw(self,num):
-
         w = self.wraplargestw()
         if w > num:
             return w
@@ -1083,7 +1043,6 @@ class textWidget(widget):
     def redrawInBox(self,surfacein):
         global drawy
         global drawx
-        self.styleize(self.style)
 
         if self.lasttext != self.text:
             self.chars=[]
@@ -1099,15 +1058,15 @@ class textWidget(widget):
             lw = 0
             drawy -= self.y
             drawx -= self.x
-            self.wrapedhight = 0
-            self.wrapedwidth = 0
             self.tsurf = pygame.Surface((dw,dh))
             self.tsurf = self.tsurf.convert_alpha()
             self.tsurf.fill((0,0,0,0))
+            self.wrapedwidth=0
+            self.wrapedhight=0
             for x in self.chars:
                 if (( not self.wrapwidth <= 0 and self.wrapwidth < lw)
                 or "Break" in x.data or ( "EndBreak" in x.data)):
-                    drawy += gh
+                    yoffset += gh
                     #print("S")
                     self.wrapedhight += gh
                     if gw>self.wrapedwidth:
@@ -1116,10 +1075,12 @@ class textWidget(widget):
                     gh = x.h
                     lw = 0
                     #drawy = drawy+yoffset
+                drawy = yoffset
                 x.y = drawy
                 x.x = drawx
                 #print(x)
                 x.redraw(self.tsurf)
+                print(x.x,drawx,x.w)
                 if "Break" not in x.data:
                     gw += x.w
                     lw += x.w
@@ -1128,6 +1089,8 @@ class textWidget(widget):
                 if gw < x.w:
                     gw = x.w
                 drawx += x.w
+            drawx=self.x
+            drawy=self.y
             surfacein.blit(self.tsurf,(drawx,drawy,self.w,self.h))
             self.wrapedhight += gh
         else:
@@ -1135,8 +1098,6 @@ class textWidget(widget):
                 surfacein.blit(self.tsurf,(drawx,drawy,self.w,self.h))
             else:
                 self.lasttext=None
-        drawx = self.x#+self.w
-        drawy = self.y
         #print(self.w)
         self.drawPopouts(surfacein)
     """docstring for Text Object."""
@@ -1184,8 +1145,6 @@ class charWidget(widget):
             #print(str(self)+str(drawx))
             #print(drawy)
             self.lasttext=self.text
-            drawx += self.padding[0]+self.margin[0]
-            drawy += self.padding[1]+self.margin[1]
             #print(self.text)
             #textSurface = ""
             offset = [0,0]
@@ -1219,17 +1178,15 @@ class charWidget(widget):
             #textRect = textSurface.get_rect()
             #print(fullTextRect)
             self.textRect = textRect
-            drawx += self.padding[2]+self.margin[2]
-            drawy += self.padding[3]+self.margin[3]
             self.changed=False
         #self.draworign(surfacein)
         #print(drawx)
         #print(self.text)
-        super(charWidget, self).redrawInBox(surfacein)
+        #super(charWidget, self).redrawInBox(surfacein)
         #print(drawx)
         #print(self.color)
         textRect = self.surf.get_rect()
-        textRect.center = (self.x, self.y)
+        textRect.center = (drawx, drawy)
         j = self.calc(self.justification)
         if "left" in j :
                 textRect = textRect.move(textRect[2]/2,0)
@@ -1269,6 +1226,7 @@ class charWidget(widget):
                 surfacein.blit(self.surf,self.textRect)
         else:
             surfacein.blit(self.surf,self.textRect)
+        self.styleize(self.style)
 
     def __init__(self,id=randid,parent="main",style={},data={}):
         self.textRect = (0,0,0,0)
@@ -1945,6 +1903,7 @@ class wraplistWidget(listWidget):
         }
         self.wrapwidth = wrapwidth
         super(wraplistWidget, self).__init__(id,parent,style,data)
+        self.display = "r-lwrap"
 
 class absDrawWidget(widget):
     def redrawInBox(self,surfacein):
@@ -2596,7 +2555,7 @@ class dropdown(widgetCollection):
         #print(self.vl)
         r = radioWidget(id=text, parent=self.vl, style={"W":64,"H":32}, data={})
         #print(r.parent)
-        textWidget(id=text+"-t", parent=r, style={
+        return textWidget(id=text+"-t", parent=r, style={
         "Text":text,
         "Background":None
         }, data={})
@@ -2614,11 +2573,7 @@ class dropdown(widgetCollection):
         #ov.out = True
         #print(ov.parentref)
         l = vlistWidget(id=str(id)+"-ml",parent=ov,style={
-        "H":"self.vfitchildren()",
-        "W":"self.hlargest()"
-        },data={
-        "HI":"HI"
-        })
+        },data={})
         self.l = l
         but = buttonWidget(id=str(id)+"-b", parent=l, action=
         """self.data["dropdown"].open()"""
@@ -2633,13 +2588,8 @@ class dropdown(widgetCollection):
         "Background":None
         }, data={})
         sw = selectWidget(id=str(id)+"-s", parent=l,
-        condition=None, style={
-
-        },data={})
-        vl = vlistWidget(id=str(id)+"-vl",parent=sw,style={
-        "H":"self.vfitchildren()",
-        "W":"self.hlargest()"
-        },data={"H":"HI"})
+        condition=None, style={},data={})
+        vl = vlistWidget(id=str(id)+"-vl",parent=sw,style={},data={"H":"HI"})
         self.vl = vl
         vl.radiovalue = self.defualt
         textWidget.vl = vl

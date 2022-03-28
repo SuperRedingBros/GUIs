@@ -132,23 +132,11 @@ if __name__ == '__main__' and False:
     #text="Hi",image="assets/checkmark.png",style={"H":dh,"W":dw})
     quit()
 
-if __name__ == '__main__' and False:
-    screen = mainWidget(pygame,"purple",style={"Border":{
-    "color":"red",
-    "width":3,
-    "round":1
-    }},data={})
-    vl = vlistWidget(id="Hi12", parent=screen, style={"Border":{
-    "color":"green",
-    "width":5,
-    "round":1
-    }})
+if __name__ == '__main__' and True:
+    screen = mainWidget(pygame,"purple",style={},data={})
+    vl = vlistWidget(id="Hi12", parent=screen, style={})
     #vl.ignore=["Border"]
-    hl1 = wraplistWidget("Hi2",vl,style={"Border":{
-    "color":"green",
-    "width":-5,
-    "round":1
-    }},data={},wrapwidth=150)
+    hl1 = wraplistWidget("Hi2",vl,style={},data={},wrapwidth=256)
     hl2 = hlistWidget("Hi123",vl,style={},data={})
     n = noneWidget(id="None")
     popout = floatyBoxWidget(id="Popout", parent=screen, style={
@@ -207,8 +195,7 @@ if __name__ == '__main__' and False:
     "Color":"black",
     "Background":None,
     "W":64,
-    "H":32,
-    "Justification":"center middle"
+    "H":32
     })
 
     emptyWidget(id="Empty", parent=vl, style={
@@ -471,7 +458,7 @@ if __name__ == '__main__' and False:
     "Justification":"left top",
     "ABSX":100,
     "ABSY":100,
-    "Color":"white",
+    "Color":"black",
     "Wrap":128,
     "Padding":(0,0,0,0),
     "Margin":(0,0,0,0),
@@ -481,7 +468,7 @@ if __name__ == '__main__' and False:
     "width":5,
     "round":1
     },
-    "Background":"red"
+    "Background":"white"
     })
     render()
     #imageWidget(id="Image",parent="Hi",x=0,y=0,color=white,activecolor=white,
@@ -535,6 +522,10 @@ if __name__ == '__main__' and True:
     })
     l.ovx="auto"
     l.ovy="auto"
+    textWidget("Text",l,style={
+        "Text":"Hello",
+        "W":64
+    })
     emptyWidget("Goon",l,style={
     "H":64,
     "W":32,
@@ -557,8 +548,8 @@ if __name__ == '__main__' and True:
     "Background":"red"
     })
     vl = vlistWidget("Scroll",hl,style={
-    "W":128,
-    "H":128,
+    "W":512,
+    "H":512,
     "Margin":(32,0,32,0),
     "Padding":(0,0,0,0),
     "Background":"black",
@@ -570,8 +561,8 @@ if __name__ == '__main__' and True:
     vl.ovx="auto"
     vl.ovy="auto"
     vl.display = "r-lwrap"
-    vl.display = "vlist"
-    vl.wrapwidth = 256
+    #vl.display = "vlist"
+    vl.wrapwidth = 512
     vl.wrap = 128
     i = imageWidget(id="Image", parent=vl, style={
     "W":256,
