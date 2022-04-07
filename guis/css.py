@@ -170,6 +170,13 @@ def tokenize(totoken):
 
 #print(tokenize("p + p "))
 
+def mediaQuery(query):
+    s = query
+    #s = re.sub("not")
+    #print(s)
+
+mediaQuery("@media only screen (min-height: 480px)")
+
 def csstodict(css):
     #print(css)
     dict = {}
@@ -199,119 +206,127 @@ class cssparser(object):
         lwidget=widget
         for d in self.data:
             #print(d)
-            for sd in d.split(","):
-                data.append([])
-                ld = sd
-                for c in combinators:
-                    ld = d.replace(c,"{}"+c)
-                vs = ld.split("{}")
-                vs = tokenize(sd)
-                #print(vs)
-                good = True
+            for it in d.split("###"):
+                if it[0]!="@":
+                    for sd in it.split(","):
+                        data.append([])
+                        ld = sd
+                        for c in combinators:
+                            ld = it.replace(c,"{}"+c)
+                        vs = ld.split("{}")
+                        vs = tokenize(sd)
+                        #print(vs)
+                        good = True
 
-                for i in range(int(len(vs)/2)):
-                    #print(x)
-                    #print(d)
-                    con=vs[i*2]
-                    con=con.strip()
-                    value=vs[(i*2)+1]
-                    #print(con+" , "+value)
-                    if con =="start":
-                            k=value
-                            prio = 0
-                            for c in selectors:
-                                k = k.replace(c,"{}"+c)
-                            k = k.split("{}")
-                            for v in k:
-                                #print(v)
-                                b,p = lwidget.matchesQuery(v)
-                                if not b:
-                                    good=False
-                                else:
-                                    prio+=p
-                    elif con =="":
-                            k=value
-                            prio = 0
-                            for c in selectors:
-                                k = k.replace(c,"{}"+c)
-                            k = k.split("{}")
-                            for v in k:
-                                #print(v)
-                                r = lwidget.hasParentOfQuery(v)
-                                if type(r)==tuple:
-                                    b,p = r
-                                if not b:
-                                    good=False
-                                else:
-                                    prio+=p
-                    elif con =="+":
-                            k=value
-                            prio = 0
-                            cwidget = lwidget
-                            lwidget = lwidget.lastSibling()
-                            if lwidget!=None:
-                                for c in selectors:
-                                    k = k.replace(c,"{}"+c)
-                                k = k.split("{}")
-                                for v in k:
-                                    #print(v)
-                                    b,p = lwidget.matchesQuery(v)
-                                    if not b:
-                                        good=False
-                                    else:
-                                        prio+=p
-                            else:
-                                good = False
-                            lwidget = cwidget
-                    elif con =="~":
-                            k=value
-                            #print(k)
-                            prio = 0
-                            cwidget = lwidget
-                            loop=True
-                            for c in selectors:
-                                k = k.replace(c,"{}"+c)
-                            k = k.split("{}")
-                            while loop:
-                                lwidget = lwidget.lastSibling()
-                                if lwidget!=None:
+                        for i in range(int(len(vs)/2)):
+                            #print(x)
+                            #print(d)
+                            con=vs[i*2]
+                            con=con.strip()
+                            value=vs[(i*2)+1]
+                            #print(con+" , "+value)
+                            if con =="start":
+                                    k=value
+                                    prio = 0
+                                    for c in selectors:
+                                        k = k.replace(c,"{}"+c)
+                                    k = k.split("{}")
                                     for v in k:
                                         #print(v)
                                         b,p = lwidget.matchesQuery(v)
-                                        if b:
+                                        if not b:
+                                            good=False
+                                        else:
                                             prio+=p
-                                            #print("L")
-                                            loop = False
-                                else:
-                                    good = False
-                                    #print("Loop")
-                                    loop = False
-                            lwidget = cwidget
-                    elif con ==">":
-                            k=value
-                            prio = 0
-                            cwidget = lwidget
-                            lwidget = lwidget.parentref
-                            if lwidget!=None:
-                                for c in selectors:
-                                    k = k.replace(c,"{}"+c)
-                                k = k.split("{}")
-                                for v in k:
-                                    #print(v)
-                                    b,p = lwidget.matchesQuery(v)
-                                    if not b:
-                                        good=False
+                            elif con =="":
+                                    k=value
+                                    prio = 0
+                                    for c in selectors:
+                                        k = k.replace(c,"{}"+c)
+                                    k = k.split("{}")
+                                    for v in k:
+                                        #print(v)
+                                        r = lwidget.hasParentOfQuery(v)
+                                        if type(r)==tuple:
+                                            b,p = r
+                                        if not b:
+                                            good=False
+                                        else:
+                                            prio+=p
+                            elif con =="+":
+                                    k=value
+                                    prio = 0
+                                    cwidget = lwidget
+                                    lwidget = lwidget.lastSibling()
+                                    if lwidget!=None:
+                                        for c in selectors:
+                                            k = k.replace(c,"{}"+c)
+                                        k = k.split("{}")
+                                        for v in k:
+                                            #print(v)
+                                            b,p = lwidget.matchesQuery(v)
+                                            if not b:
+                                                good=False
+                                            else:
+                                                prio+=p
                                     else:
-                                        prio+=p
+                                        good = False
+                                    lwidget = cwidget
+                            elif con =="~":
+                                    k=value
+                                    #print(k)
+                                    prio = 0
+                                    cwidget = lwidget
+                                    loop=True
+                                    for c in selectors:
+                                        k = k.replace(c,"{}"+c)
+                                    k = k.split("{}")
+                                    while loop:
+                                        lwidget = lwidget.lastSibling()
+                                        if lwidget!=None:
+                                            for v in k:
+                                                #print(v)
+                                                b,p = lwidget.matchesQuery(v)
+                                                if b:
+                                                    prio+=p
+                                                    #print("L")
+                                                    loop = False
+                                        else:
+                                            good = False
+                                            #print("Loop")
+                                            loop = False
+                                    lwidget = cwidget
+                            elif con ==">":
+                                    k=value
+                                    prio = 0
+                                    cwidget = lwidget
+                                    lwidget = lwidget.parentref
+                                    if lwidget!=None:
+                                        for c in selectors:
+                                            k = k.replace(c,"{}"+c)
+                                        k = k.split("{}")
+                                        for v in k:
+                                            #print(v)
+                                            b,p = lwidget.matchesQuery(v)
+                                            if not b:
+                                                good=False
+                                            else:
+                                                prio+=p
+                                    else:
+                                        good = False
+                                    lwidget = cwidget
                             else:
+                                #print(con)
                                 good = False
-                            lwidget = cwidget
-                    else:
-                        #print(con)
-                        good = False
-                if good:
-                    data[index].append(prio)
-                    data[index].append(self.data[d])
+                        if good:
+                            break
+                else:
+                    mediaQuery(it)
+                    good=False
+                    break
+            if good:
+                data[index].append(prio)
+                data[index].append(self.data[d])
 
             index+=1
         #print(data)
@@ -368,7 +383,7 @@ class cssparser(object):
             else:
                 looping=False
         self.data = list
-        print(json.dumps(list,indent=3))
+        #print(json.dumps(list,indent=3))
         return list
 
     def feed(self,text):

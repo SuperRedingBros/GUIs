@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------------------#
-# 2021 Tommy Reding
+# 2021-2022 Tommy Reding
 #-----------------------------------------------------------------------------------------#
 
 try:
@@ -59,14 +59,18 @@ parser = css.cssparser()
 
 parser.feed("""
     @media screen and (min-width: 480px) {
-        textWidget {
-            Color:red;
+        vlistWidget {
+            Background:red;
         }
     }
     """)
 parser.parse()
 
 globallink = {}
+
+variablestr = """str(str(sl.ry)+","+str(sl.rx))"""
+path = pathlib.Path(__file__).parent.resolve()
+img_file = "./assets/pythonicon.png"
 
 #-----------------------------------------------------------------------------------------#
 #Generic
@@ -198,6 +202,7 @@ class widget(object):
         good = True
         v=query
         prio=0
+        print(v)
         if v!="":
             if v[0] not in css.selectors:
                 if v == self.type:
@@ -401,29 +406,6 @@ class widget(object):
                 except:
                     print("Invalid Image: "+str(i))
                     pass
-        if "Gradient" in style:
-            Gradient = style["Gradient"]
-            #print(Gradient)
-            if None != Gradient:
-                self.gradient["base"] = self.calc(Gradient["base"])
-                self.gradient["end"] = self.calc(Gradient["end"])
-                self.gradient["types"] = self.calc(Gradient["types"])
-                self.gradient["vert"] = self.calc(Gradient["vert"])
-                self.gradient["flip"] = self.calc(Gradient["flip"])
-                self.gradient["inverse"] = self.calc(Gradient["inverse"])
-            else:
-                pass
-        elif self.parentref != None:
-            Gradient = self.parentref.getstyle("Gradient")
-            if None != Gradient:
-                self.gradient["base"] = self.calc(self.parentref.getstyle("Gradient")["base"])
-                self.gradient["end"] = self.calc(self.parentref.getstyle("Gradient")["end"])
-                self.gradient["types"] = self.calc(self.parentref.getstyle("Gradient")["types"])
-                self.gradient["vert"] = self.calc(self.parentref.getstyle("Gradient")["vert"])
-                self.gradient["flip"] = self.calc(self.parentref.getstyle("Gradient")["flip"])
-                self.gradient["inverse"] = self.calc(self.parentref.getstyle("Gradient")["inverse"])
-            else:
-                pass
 
     def wraplargestw(self):
         w = 0
@@ -810,7 +792,6 @@ class widget(object):
         self.ry = 0
         self.lookup(parser)
         self.styleize(style)
-        self.stylecalc(self.style)
 
 class widgetCollection(widget):
 
@@ -845,7 +826,7 @@ class mainWidget(widget):
         super(mainWidget, self).redrawInBox(surfacein)
         #print(drawx,drawy)
 
-    def __init__(self,pygame=pygame,background=None,inglobals=globals(),style={},data={}):
+    def __init__(self,background=None,inglobals=globals(),style={},data={}):
         global globallink
         globallink.update(inglobals)
         self.children = []
@@ -890,7 +871,7 @@ class mainWidget(widget):
         "Italics":False,
         "Underline":False}
         }
-        super(mainWidget, self).__init__("main"+str(randid),None,style)
+        super(mainWidget, self).__init__("main",None,style)
 
 class surfaceWidget(widget):
 
@@ -1044,6 +1025,13 @@ class textWidget(widget):
         global drawy
         global drawx
 
+        if self.font != self.lastfont:
+            filepath = self.font["File"].replace("./",str(path)+"/")
+            dynamicFont = Font(filepath, self.font["Scale"])
+            self.realfont = dynamicFont
+            self.realfont.underline = self.font["Underline"]
+            self.realfont.italic = self.font["Italics"]
+
         if self.lasttext != self.text:
             self.chars=[]
             self.children=[]
@@ -1051,6 +1039,9 @@ class textWidget(widget):
                 cw=charWidget(id=self.id,parent=self)
                 cw.text=c
                 self.chars.append(cw)
+                cw.realfont = self.realfont
+                cw.realfont.underline = self.font["Underline"]
+                cw.realfont.italic = self.font["Italics"]
             self.lasttext = self.text
             yoffset = 0
             gh = 0
@@ -1058,11 +1049,9 @@ class textWidget(widget):
             lw = 0
             drawy -= self.y
             drawx -= self.x
-            self.tsurf = pygame.Surface((dw,dh))
+            self.tsurf = pygame.Surface((self.w,self.h))
             self.tsurf = self.tsurf.convert_alpha()
             self.tsurf.fill((0,0,0,0))
-            self.wrapedwidth=0
-            self.wrapedhight=0
             for x in self.chars:
                 if (( not self.wrapwidth <= 0 and self.wrapwidth < lw)
                 or "Break" in x.data or ( "EndBreak" in x.data)):
@@ -1080,7 +1069,7 @@ class textWidget(widget):
                 x.x = drawx
                 #print(x)
                 x.redraw(self.tsurf)
-                print(x.x,drawx,x.w)
+                #print(x.x,drawx,x.w)
                 if "Break" not in x.data:
                     gw += x.w
                     lw += x.w
@@ -1091,8 +1080,9 @@ class textWidget(widget):
                 drawx += x.w
             drawx=self.x
             drawy=self.y
-            surfacein.blit(self.tsurf,(drawx,drawy,self.w,self.h))
+            #surfacein.blit(self.tsurf,(drawx,drawy,self.w,self.h))
             self.wrapedhight += gh
+            self.children=[]
         else:
             if hasattr(self, "tsurf"):
                 surfacein.blit(self.tsurf,(drawx,drawy,self.w,self.h))
@@ -1129,33 +1119,19 @@ class charWidget(widget):
         else:
             return num
 
-    """A Text Widget"""
-    def redrawInBox(self,surfacein):
+    """A Char Widget"""
+    def redraw(self,surfacein):
         #self.draworign(surfacein)
-        if self.font != self.lastfont:
-            filepath = self.font["File"].replace("./",str(path)+"/")
-            dynamicFont = Font(filepath, self.font["Scale"])
-            self.realfont = dynamicFont
-            self.realfont.underline = self.font["Underline"]
-            self.realfont.italic = self.font["Italics"]
         #fullTextRect = pygame.Rect(0,0,0,0)
         if self.changed and self.text!=self.lasttext:
             global drawx
             global drawy
-            #print(str(self)+str(drawx))
-            #print(drawy)
             self.lasttext=self.text
-            #print(self.text)
-            #textSurface = ""
-            offset = [0,0]
-            #print(t)
-            #pygame.draw.rect(surfacein, (255,0,0), (self.x,self.y,self.w,self.h))
-            #print(t)
             self.surf = self.realfont.render(self.text, True, self.color)
             textRect = self.surf.get_rect()
             textRect.center = (drawx, drawy)
             #print(textRect)
-            j = self.calc(self.justification)
+            j = self.justification
             if "left" in j :
                     textRect = textRect.move(textRect[2]/2,0)
             elif "center" in j:
@@ -1169,39 +1145,9 @@ class charWidget(widget):
                     #textRect = textRect.move(0,-1*textRect[3])
             elif "bottom" in j :
                 textRect = textRect.move(0,self.h)
-            #pygame.draw.rect(surfacein, (255,0,0), textRect)
-            #self.surf.blit(tSurface, textRect)
-            #if fullTextRect[3] < tRect[3]:
-            #fullTextRect[3] += tRect[3]
-            #print(textRect)
-            #self.changed = False
-            #textRect = textSurface.get_rect()
-            #print(fullTextRect)
             self.textRect = textRect
             self.changed=False
-        #self.draworign(surfacein)
-        #print(drawx)
-        #print(self.text)
-        #super(charWidget, self).redrawInBox(surfacein)
-        #print(drawx)
-        #print(self.color)
-        textRect = self.surf.get_rect()
-        textRect.center = (drawx, drawy)
-        j = self.calc(self.justification)
-        if "left" in j :
-                textRect = textRect.move(textRect[2]/2,0)
-        elif "center" in j:
-                textRect = textRect.move(self.w/2,0)
-        elif "right" in j :
-                textRect = textRect.move(self.w-textRect[2]/2,0)
-        if "top" in j :
-                textRect = textRect.move(0,textRect[3]/2)
-        elif "middle" in j:
-                textRect = textRect.move(0,self.h/2)
-                #textRect = textRect.move(0,-1*textRect[3])
-        elif "bottom" in j :
-            textRect = textRect.move(0,self.h)
-        self.textRect = textRect
+        textRect = self.textRect
         if self.gradient != None:
             if "text" in self.gradient["types"]:
                 surfTextRect = self.textRect
@@ -1226,16 +1172,18 @@ class charWidget(widget):
                 surfacein.blit(self.surf,self.textRect)
         else:
             surfacein.blit(self.surf,self.textRect)
-        self.styleize(self.style)
+        self.h = textRect[3]
+        self.w = textRect[2]
 
     def __init__(self,id=randid,parent="main",style={},data={}):
         self.textRect = (0,0,0,0)
         self.style = {
         "H":"self.textRect[3]",
-        "W":"self.textRect[2]"
+        "W":"self.textRect[2]",
+        "Font":"parentref.font"
         }
         self.lasttext=""
-        self.ignore=["Text","Border","Round","Background","Padding","Margin"]
+        self.ignore=["Text","Border","Round","Background","Padding","Margin","Font"]
         super(charWidget, self).__init__(id,parent,style,data)
 
 class oldtextWidget(widget):
@@ -2784,14 +2732,3 @@ except Exception as e:
 
 def Font(fontFace, size):
     return pygame.font.Font(fontFace, round(size))
-
-looping = True
-
-clock = pygame.time.Clock()
-
-variablestr = """str(str(sl.ry)+","+str(sl.rx))"""
-text = "Hello"
-path = pathlib.Path(__file__).parent.resolve()
-#print(path)
-img_file = "./assets/pythonicon.png"
-variabletest = 0

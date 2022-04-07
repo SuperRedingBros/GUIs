@@ -12,6 +12,9 @@ import pygame
 usefull = False
 ldw = 1280
 ldh = 960
+variabletest = 0
+looping=True
+clock = pygame.time.Clock()
 
 def renderframe(events,display,skipevents=False,screen=None):
     #print("frame")
@@ -64,7 +67,8 @@ def render():
         pygame.display.update()
         #pygame.time.wait(1500)
         variabletest += .5
-        #print(clock.get_time())
+        print("Tick",clock.get_time())
+        print(vl.countchildren())
     pygame.quit()
 
 
@@ -132,7 +136,7 @@ if __name__ == '__main__' and False:
     #text="Hi",image="assets/checkmark.png",style={"H":dh,"W":dw})
     quit()
 
-if __name__ == '__main__' and True:
+if __name__ == '__main__' and False:
     screen = mainWidget(pygame,"purple",style={},data={})
     vl = vlistWidget(id="Hi12", parent=screen, style={})
     #vl.ignore=["Border"]
@@ -481,15 +485,21 @@ if __name__ == '__main__' and False:
 
     htmltogui.openfile("./guis/testhtml/test.html")
 
-if __name__ == '__main__' and False:
-
-    screen = mainWidget(pygame,"blue",style={},data={})
-    vl = vlistWidget("vl",screen)
-    i = imageWidget(id="Image", parent=vl, style={
-    "W":64,
-    "H":64,
-    "Image":"img_file",
-    "Angle":"int(variabletest)"
+if __name__ == '__main__' and True:
+    gameDisplay.fill(blue)
+    pygame.display.update()
+    screen = mainWidget("blue",inglobals=globals(),style={},data={})
+    vl = vlistWidget("vl",screen,style={
+    "H":dh,
+    "W":750
+    })
+    vl.ovy = "auto"
+    t = textWidget(id="Text", parent=vl,style={
+    "Text":"Ok. jskkskskskksksksksksksksksksksksksksk",
+    "Color":"black",
+    "Background":None,
+    "W":750,
+    "H":32
     })
     i = imageWidget(id="Image", parent=vl, style={
     "W":64,
@@ -497,12 +507,9 @@ if __name__ == '__main__' and False:
     "Image":"img_file",
     "Angle":"int(variabletest)"
     })
-    i = imageWidget(id="Image", parent=vl, style={
-    "W":64,
-    "H":64,
-    "Image":"img_file",
-    "Angle":"int(variabletest)"
-    })
+    for x in range(25):
+        t.copy()
+        i.copy()
     #vlistWidget("Hi3","Hi2",0,0,red,grey,style={"W":"self.hfill()"})
     #surfaceWidget("HI",25,25,25,25,"main",white)
     #c.draw("Line",(255,0,0),((0,0),(25,25)),25)
@@ -513,12 +520,11 @@ if __name__ == '__main__' and False:
     #text="Hi",image="assets/checkmark.png",style={"H":dh,"W":dw})
     quit()
 
-if __name__ == '__main__' and True:
+if __name__ == '__main__' and False:
     screen = mainWidget(pygame,"blue",style={},data={})
     l = vlistWidget("hvl",screen,style={
     "W":dw-8,
-    "H":dh-8,
-    "Background":"blue"
+    "H":dh-8
     })
     l.ovx="auto"
     l.ovy="auto"
@@ -526,6 +532,7 @@ if __name__ == '__main__' and True:
         "Text":"Hello",
         "W":64
     })
+    render()
     emptyWidget("Goon",l,style={
     "H":64,
     "W":32,
