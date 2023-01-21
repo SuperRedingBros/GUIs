@@ -189,7 +189,6 @@ class Styleizor():
         for x in self.children:
             w += x.calc(x.w)
         return w
-<<<<<<< HEAD
 
     def vlargest(self):
         h=0
@@ -325,7 +324,6 @@ class Styleizor():
                     print("Invalid Image: "+str(i))
                     pass
 
->>>>>>> 86ddce6d0b8cd1c237e12bea3c9c448f315ad17c
     def wraplargestw(self):
         w = 0
         for x in self.children:
