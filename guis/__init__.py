@@ -6,5 +6,5 @@ def init(modules):
 from . import guis
 from . import htmltogui
 from .guis import *
-import colors
-import videoplayer
+from . import colors
+from . import videoplayer

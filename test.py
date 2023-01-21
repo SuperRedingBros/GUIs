@@ -1,5 +1,5 @@
-import guis.guis
-from guis.guis import *
+import guis
+from guis import *
 import pygame
 import guis.htmltogui as htmltogui
 
