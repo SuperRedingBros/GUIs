@@ -1,0 +1,8 @@
+pyproject.toml
+setup.cfg
+setup.py
+guis/guis.egg-info/PKG-INFO
+guis/guis.egg-info/SOURCES.txt
+guis/guis.egg-info/dependency_links.txt
+guis/guis.egg-info/requires.txt
+guis/guis.egg-info/top_level.txt

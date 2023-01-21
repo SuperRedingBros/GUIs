@@ -1,6 +1,7 @@
-import guis
-from guis import *
+import guis.guis
+from guis.guis import *
 import pygame
+import guis.htmltogui as htmltogui
 
 # TODO:
 #
@@ -9,9 +10,12 @@ import pygame
 #  https://pypi.org/project/SpeechRecognition/
 #
 
+
 usefull = False
+dw = 1280
+dh = 560
 ldw = 1280
-ldh = 960
+ldh = 560
 variabletest = 0
 looping=True
 clock = pygame.time.Clock()
@@ -41,8 +45,8 @@ def renderframe(events,display,skipevents=False,screen=None):
                 pass
             if event.type == pygame.VIDEORESIZE:
                 s = pygame.display.get_window_size()
-                dw = s[0]
-                dh = s[1]
+                guis.dw = s[0]
+                guis.dh = s[1]
                 display.fill((0,0,0))
                 pygame.display.update()
             if  event.type == WINDOWLEAVE:
@@ -67,10 +71,9 @@ def render():
         pygame.display.update()
         #pygame.time.wait(1500)
         variabletest += .5
-        print("Tick",clock.get_time())
-        print(vl.countchildren())
+        #print("Tick",clock.get_time())
+        #print(vl.countchildren())
     pygame.quit()
-
 
 if __name__ == '__main__':
     if usefull:
@@ -483,9 +486,10 @@ if __name__ == '__main__' and False:
 if __name__ == '__main__' and False:
     htmltogui.setup(gameDisplay)
 
-    htmltogui.openfile("./guis/testhtml/test.html")
+    screen = htmltogui.openfile("./guis/testhtml/test.html")
+    render()
 
-if __name__ == '__main__' and True:
+if __name__ == '__main__' and False:
     gameDisplay.fill(blue)
     pygame.display.update()
     screen = mainWidget("blue",inglobals=globals(),style={},data={})
@@ -507,7 +511,7 @@ if __name__ == '__main__' and True:
     "Image":"img_file",
     "Angle":"int(variabletest)"
     })
-    for x in range(25):
+    for x in range(0):
         t.copy()
         i.copy()
     #vlistWidget("Hi3","Hi2",0,0,red,grey,style={"W":"self.hfill()"})
@@ -520,28 +524,54 @@ if __name__ == '__main__' and True:
     #text="Hi",image="assets/checkmark.png",style={"H":dh,"W":dw})
     quit()
 
-if __name__ == '__main__' and False:
-    screen = mainWidget(pygame,"blue",style={},data={})
+if __name__ == '__main__' and True:
+    screen = mainWidget("blue",inglobals=globals(),style={},data={})
     l = vlistWidget("hvl",screen,style={
-    "W":dw-8,
-    "H":dh-8
+    "W":"dw-8",
+    "H":"dh-8"
     })
     l.ovx="auto"
     l.ovy="auto"
-    textWidget("Text",l,style={
-        "Text":"Hello",
-        "W":64
+    tb = textBoxWidget("TextBox",l,style={
+    "Text":"Type!",
+    "Color":"black",
+    "InactiveColor":"grey",
+    "ActiveColor":"lgrey",
+    "Background":None,
+    "W":"self.hfitchildren()",
+    "H":"self.vfitchildren()"
     })
-    render()
+    tbt = textWidget(id="Hello", parent=tb,style={
+    "Text":"self.parentref.getText()",
+    "Justification":"left top",
+    "W":"self.textboxw(64,256)",
+    "H":"self.textboxh(32,256)",
+    "Color":"white",
+    "Wrap":128,
+    "Padding":(0,0,0,0),
+    "Margin":(0,0,0,0),
+    "Round":(5,5,5,5),
+    "Border":{
+    "color":"white",
+    "width":2,
+    "round":1
+    },
+    "Background":"self.parentref.dbackground"
+    })
+    textWidget("Text",None,style={
+        "Text":"Hello",
+        "W":64,
+        "H":32
+    })
     emptyWidget("Goon",l,style={
-    "H":64,
+    "H":16,
     "W":32,
     "Background":"red",
     "Margin":(32,32,32,32),
     "Padding":(32,32,32,32),
     "Border":{
     "color":"green",
-    "width":32
+    "width":2
     }
     })
     hl = hlistWidget("hl",l,style={
@@ -549,15 +579,15 @@ if __name__ == '__main__' and False:
     "H":256,
     "Background":"dred"
     })
-    emptyWidget("S",hl,style={
-    "W":64,
-    "H":32,
+    dropWidget("S",hl,style={
+    "W":128,
+    "H":64,
     "Background":"red"
     })
     vl = vlistWidget("Scroll",hl,style={
     "W":512,
-    "H":512,
-    "Margin":(32,0,32,0),
+    "H":256,
+    "Margin":(32,32,32,32),
     "Padding":(0,0,0,0),
     "Background":"black",
     "Border":{
@@ -565,57 +595,114 @@ if __name__ == '__main__' and False:
     "width":5,
     "round":1
     }})
-    vl.ovx="auto"
-    vl.ovy="auto"
-    vl.display = "r-lwrap"
+    vl.ovx="scroll"
+    vl.ovy="scroll"
     #vl.display = "vlist"
-    vl.wrapwidth = 512
+    vl.wrapwidth = 256
     vl.wrap = 128
-    i = imageWidget(id="Image", parent=vl, style={
-    "W":256,
-    "H":256,
-    "Margin":(0,0,0,0),
-    "Padding":(0,0,0,0),
+    drop = dropdown("Text",vl,style={
+    "activecolor":"black","inactivecolor":"None","background":"None","Color":"white"},defualt="Hi")
+    drop.addoption("Hi")
+    drop.addoption("hello")
+    drop.addoption("Hola")
+    imageWidget("Text",vl,style={
+        "Text":"",
+        "W":128,
+        "H":128,
+        "round":(25,25,25,25),
+        "activecolor":"red",
+        "color":(255,255,255)
+    })
+    radioWidget("Text",vl,style={
+        "Text":"",
+        "W":128,
+        "H":64,
+        "round":(25,25,25,25),
+        "activecolor":"red",
+        "color":(255,255,255)
+    })
+    radioWidget("Text",vl,style={
+        "Text":"",
+        "W":128,
+        "H":64,
+        "round":(25,25,25,25),
+        "activecolor":"red",
+        "color":(255,255,255)
+    })
+    radioWidget("Text",vl,style={
+        "Text":"",
+        "W":128,
+        "H":64,
+        "round":(25,25,25,25),
+        "activecolor":"red",
+        "color":(255,255,255)
+    })
+    render()
+
+if(__name__=="__main__" and False):
+    screen = mainWidget("blue",inglobals=globals(),style={},data={})
+    l = vlistWidget("hvl",screen,style={
+    "W":"dw-8",
+    "H":"dh-8"
+    })
+    l.ovx="auto"
+    l.ovy="auto"
+    tb = textBoxWidget("TextBox",l,style={
+    "Text":"Type!",
+    "Color":"black",
+    "InactiveColor":"grey",
+    "ActiveColor":"lgrey",
     "Background":None,
-    "Image":"img_file",
-    "Angle":"int(variabletest)",
+    "W":"self.hfitchildren()",
+    "H":"self.vfitchildren()"
+    })
+    tbt = textWidget(id="Hello", parent=tb,style={
+    "Text":"self.parentref.getText()",
+    "Justification":"left top",
+    "W":"self.textboxw(64,256)",
+    "H":"self.textboxh(32,256)",
+    "Color":"white",
+    "Wrap":128,
+    "Padding":(0,0,0,0),
+    "Margin":(0,0,0,0),
+    "Round":(5,5,5,5),
     "Border":{
-    "color":"green",
-    "width":-5,
+    "color":"white",
+    "width":2,
     "round":1
-    }
+    },
+    "Background":"self.parentref.dbackground"
     })
-    i.copy()
-    i.copy()
-    i.copy()
-    i.copy()
-    i.copy()
-    i.copy()
-    emptyWidget("S",hl,style={
-    "W":64,
-    "H":32,
-    "Background":"red"
+    textWidget("Text",None,style={
+        "Text":"Hello",
+        "W":64,
+        "H":32
     })
-    emptyWidget("Goon",l,style={
-    "H":64,
-    "W":32,
-    "Background":"red",
-    "Margin":(32,32,32,32),
-    "Padding":(32,32,32,32),
-    "Border":{
-    "color":"green",
-    "width":32
-    }
-    })
-    emptyWidget("Goon",l,style={
-    "H":64,
-    "W":32,
-    "Background":"red",
-    "Margin":(32,32,32,32),
-    "Padding":(32,32,32,32),
-    "Border":{
-    "color":"green",
-    "width":32
-    }
+    slider = sliderWidget(id="-scrolly", parent=l, style={
+    "Background":"dgrey",
+    "W":128,
+    "H":128,
+    "InactiveColor":"grey",
+    "ActiveColor":"lgrey",
+    "Slider":{
+        "x":0,
+        "w":12,
+        "h":"64",
+        "y":8,
+        "dw":2,
+        "wo":8,
+        "dh":8,
+        "ho":12,
+        "inc":1,
+        "drawinc":5,
+        "notch":[]
+    }}, data={"Test"})
+    barx = emptyWidget(id="-BarX", parent=slider, style={
+    "Text":"",
+    "Color":"black",
+    "H":8,
+    "W":12,
+    "Background":"grey",
+    "Round":(5,5,5,5)
     })
     render()
