@@ -1,7 +1,12 @@
 pyproject.toml
 setup.cfg
+setup.py
 guis/__init__.py
+guis/colors.py
+guis/css.py
 guis/guis.py
+guis/htmltogui.py
+guis/widget.py
 guis.egg-info/PKG-INFO
 guis.egg-info/SOURCES.txt
 guis.egg-info/dependency_links.txt
