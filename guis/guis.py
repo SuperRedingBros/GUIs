@@ -13,6 +13,10 @@ try:
 except:
     import css
 try:
+    from . import style as styleobj
+except:
+    import style as styleobj
+try:
     from . import videoplayer
 except:
     import videoplayer
@@ -83,6 +87,7 @@ parser.parse()
 variablestr = """str(str(sl.ry)+","+str(sl.rx))"""
 path = pathlib.Path(__file__).parent.resolve()
 img_file = "./assets/pythonicon.png"
+
 
 #-----------------------------------------------------------------------------------------#
 #Generic
@@ -156,7 +161,7 @@ defualtstyle = {
 globalignore = ("action","toBeAdded")
 
 # Base Classes  2
-class Styleizor():
+class Styleizor(styleobj.styleObj):
 # Start Style
 
     def vfill(self):
@@ -343,7 +348,6 @@ class Styleizor():
         #print(h)
         return self.wrapedwidth
 
-
 # End Style
 
 # Start Helpers
@@ -439,7 +443,7 @@ class Styleizor():
             #print(ex)
             #print(self.rx,self.x)
             b = (
-            self.rx+self.w+self.x+x > ex > self.rx+self.x+x
+            self.rx+self.getW()+self.x+x > ex > self.rx+self.x+x
             and
             self.ry+self.h+self.y+y > ey > self.ry+self.y+y
             )
@@ -458,7 +462,7 @@ class Styleizor():
             ex,ey = pygame.mouse.get_pos()
             b = ((
             (
-            self.rx+self.w+self.x > ex > self.rx+self.x
+            self.rx+self.getW()+self.x > ex > self.rx+self.x
             and
             self.ry+self.h+self.y > ey > self.ry+self.y
             )
@@ -549,8 +553,6 @@ def quickSort(array, low, high):
 		# Recursive call on the right of pivot
 		quickSort(array, pi + 1, high)
 
-
-
 class widget(Styleizor):
 
     def calc(self, input="",lglobals=None):
@@ -594,7 +596,6 @@ class widget(Styleizor):
     def drawInterior(self,surfacein):
         #print(self.background)
         #print(self.getstyle("Border"))
-        #print(drawx,drawy,self.w,self.h)
 
         if self.background != None:
             #print(self.background)
@@ -605,7 +606,7 @@ class widget(Styleizor):
                 pygame.Rect(
                 (drawx-offsetx)
                 ,(drawy-offsety)
-                ,self.w
+                ,self.getW()
                 ,self.h
                 )
                 ,
@@ -626,7 +627,7 @@ class widget(Styleizor):
                     try:
                         x = 0 if self.x<0 else self.x
                         y = 0 if self.y<0 else self.y
-                        w = dw-self.x if (self.w+self.x)>dw else self.w
+                        w = dw-self.x if (self.getW()+self.x)>dw else self.getW()
                         h = dh-self.y if (self.h+self.y)>dh else self.h
                         surf = surfacein.subsurface((x,y,w,h))
                         rect = surf.get_rect()
@@ -663,10 +664,9 @@ class widget(Styleizor):
         #print(self.border)
         #print(surfacein)
         #print(self.getstyle("Border"))
-        #print(drawx,drawy,self.w,self.h,self.margin,self.padding)
         if self.border != None:
             DrawBorder(drawx
-            ,drawy, self.w+self.padding[0]+self.padding[2]+(self.border["width"]*2)
+            ,drawy, self.getW()+self.padding[0]+self.padding[2]+(self.border["width"]*2)
             , self.h+self.padding[1]+self.padding[3]+(self.border["width"]*2)
             , self.border["width"], self.border["color"], surfacein)
 
@@ -678,7 +678,7 @@ class widget(Styleizor):
         pygame.Rect(
         (drawx)
         ,(drawy)
-        ,self.w+self.padding[0]+self.padding[2]+(self.border["width"]*2)
+        ,self.getW()+self.padding[0]+self.padding[2]+(self.border["width"]*2)
         ,self.h+self.padding[1]+self.padding[3]+(self.border["width"]*2)
         ),
         self.border["width"]
@@ -697,7 +697,7 @@ class widget(Styleizor):
                 try:
                     x = 0 if self.x<0 else self.x
                     y = 0 if self.y<0 else self.y
-                    w = dw-self.x if (self.w+self.x)>dw else self.w
+                    w = dw-self.x if (self.getW()+self.x)>dw else self.getW()
                     h = dh-self.y if (self.h+self.y)>dh else self.h
                     surf = surfacein.subsurface((x,y,w,h))
                     surf = surf.copy()
@@ -720,10 +720,9 @@ class widget(Styleizor):
         #print(self.border)
         #print(surfacein)
         #print(self.getstyle("Border"))
-        #print(drawx,drawy,self.w,self.h,self.margin,self.padding)
         if self.border != None:
             DrawBorder(drawx
-            ,drawy, self.w+self.padding[0]+self.padding[2]+(self.border["width"]*2)
+            ,drawy, self.getW()+self.padding[0]+self.padding[2]+(self.border["width"]*2)
             , self.h+self.padding[1]+self.padding[3]+(self.border["width"]*2)
             , self.border["width"], self.border["color"], surfacein)
 
@@ -734,7 +733,7 @@ class widget(Styleizor):
                 try:
                     x = 0 if self.x<0 else self.x
                     y = 0 if self.y<0 else self.y
-                    w = dw-self.x if (self.w+self.x)>dw else self.w
+                    w = dw-self.x if (self.getW()+self.x)>dw else self.getW()
                     h = dh-self.y if (self.h+self.y)>dh else self.h
                     surf = surfacein.subsurface((x,y,w,h))
                     surf = surf.copy()
@@ -914,7 +913,6 @@ class widget(Styleizor):
     def redrawInBox(self,surfacein):
         global drawy
         global drawx
-        #print(self.id,(self.x,self.y,self.w,self.h),(drawx,drawy))
         for x in self.applyZOrder():
             x.y = drawy
             x.x = drawx
@@ -1105,8 +1103,7 @@ class surfaceWidget(widget):
 
     def redrawInBox(self,surfacein):
         #if self.mysurface == "" or self.recalc:
-            #print((self.surfx,self.surfy,self.w,self.h))
-        w = dw - self.x if self.x+self.w>dw else self.w
+        w = dw - self.x if self.x+self.getW()>dw else self.getW()
         h = dh - self.y if self.y+self.h>dh else self.h
         self.mysurface = surfacein.subsurface(
         (self.x,self.y,w,h))
@@ -1288,7 +1285,7 @@ class textWidget(widget):
             lw = 0
             drawy -= self.y
             drawx -= self.x
-            self.tsurf = pygame.Surface((self.w+32,self.h+32))
+            self.tsurf = pygame.Surface((self.getW()+32,self.h+32))
             self.tsurf = self.tsurf.convert_alpha()
             self.tsurf.fill((0,0,0,0))
             for x in self.chars:
@@ -1316,7 +1313,6 @@ class textWidget(widget):
                 drawx += x.w
             drawx=self.x
             drawy=self.y
-            #surfacein.blit(self.tsurf,(drawx,drawy,self.w,self.h))
             self.wrapedhight += gh
             self.children=[]
             if gw>self.wrapedwidth:
@@ -1328,7 +1324,7 @@ class textWidget(widget):
             surfacein.blit(self.tsurf,(drawx-x,drawy-y,self.w,self.h))
         else:
             self.lasttext=None
-        #print(self.w)
+
         self.drawPopouts(surfacein)
     """docstring for Text Object."""
 
@@ -1340,7 +1336,6 @@ class textWidget(widget):
         self.wrapwidth=1280
         self.chars=[]
         self.wrap = wrapwidth
-        #self.wrapwidth = "self.wrap"
         self.textRect=(0,0,0,0)
         self.lasttext=""
         super(textWidget, self).__init__(id,parent,style,data)
@@ -1407,9 +1402,9 @@ class charWidget(widget):
             if "left" in j :
                     textRect = textRect.move(textRect[2]/2,0)
             elif "center" in j:
-                    textRect = textRect.move(self.w/2,0)
+                    textRect = textRect.move(self.getW()/2,0)
             elif "right" in j :
-                    textRect = textRect.move(self.w-textRect[2]/2,0)
+                    textRect = textRect.move(self.getW()-textRect[2]/2,0)
             if "top" in j :
                     textRect = textRect.move(0,textRect[3]/2)
             elif "middle" in j:
@@ -1494,7 +1489,6 @@ class oldtextWidget(widget):
             #textSurface = ""
             offset = [0,0]
             #print(t)
-            #pygame.draw.rect(surfacein, (255,0,0), (self.x,self.y,self.w,self.h))
             #print(t)
             for x in t:
                 if type(self.color) != dict :
@@ -1509,9 +1503,9 @@ class oldtextWidget(widget):
                 if "left" in j :
                     textRect = textRect.move(textRect[2]/2,0)
                 elif "center" in j:
-                    textRect = textRect.move(self.w/2,0)
+                    textRect = textRect.move(self.getW()/2,0)
                 elif "right" in j :
-                    textRect = textRect.move(self.w-textRect[2]/2,0)
+                    textRect = textRect.move(self.getW()-textRect[2]/2,0)
                 if "top" in j :
                     textRect = textRect.move(0,textRect[3]/2)
                 elif "middle" in j:
@@ -1581,13 +1575,13 @@ class hprogressWidget(widget):
             value = (1 if self.fillvalue>1 else 0 if self.fillvalue<0 else self.fillvalue)
             if self.flip:
                     rect = pygame.Rect(
-                    self.x+self.w-(self.w*value)-offsetx,
+                    self.x+self.getW()-(self.getW()*value)-offsetx,
                     self.y-offsety,
-                    self.w*value
+                    self.getW()*value
                     ,self.h)
             else:
                     rect = pygame.Rect(self.x-offsetx,self.y-offsety,
-                    self.w*value,self.h)
+                    self.getW()*value,self.h)
 
             pygame.draw.rect(surfacein,self.color, rect,0,
                 border_top_left_radius=self.round[0],
@@ -1608,14 +1602,14 @@ class vprogressWidget(widget):
                     rect = pygame.Rect(
                     self.x,
                     (self.y)+self.h-(self.h*value),
-                    self.w,
+                    self.getW(),
                     (self.h*value)
                     )
                 else:
                     rect = pygame.Rect(
                     self.x,
                     self.y,
-                    self.w,
+                    self.getW(),
                     (self.h*value)
                     )
                 pygame.draw.rect(surfacein,self.color,rect
@@ -1632,14 +1626,14 @@ class arcProgressWidget(widget):
         if self.flip: inc = -1
         else: inc = 1
         imgc = self.img
-        size = (int(self.w/3)+int(self.h/3))/2
+        size = (int(self.getW()/3)+int(self.h/3))/2
         imgc = pygame.transform.scale(imgc, (size,size ))
         #print(self.angle)
         #print(inc,self.fillvalue,self.maxangle)
         value = (1 if self.fillvalue>1 else 0 if self.fillvalue<0 else self.fillvalue)
         angle = (inc*value*self.maxangle)-self.angle+90
         imgc,imgr = rot_center(imgc, imgc.get_rect(), angle)
-        imgr.center = (self.w/2,self.h/2)
+        imgr.center = (self.getW()/2,self.h/2)
         surfacein.blit(imgc,(self.x+imgr[0],self.y+imgr[1]))
 
     def __init__(self,id,parent,style,data={}):
@@ -1669,10 +1663,9 @@ class listWidget(widget):
         global drawy
         global drawx
         sizerect = surfacein.get_size()
-        #print(self.id,(self.x,self.y,self.w,self.h),(drawx,drawy))
         x = 0 if self.x<0 else self.x
         y = 0 if self.y<0 else self.y
-        w = dw-self.x if (self.w+self.x)>dw else self.w
+        w = dw-self.x if (self.getW()+self.x)>dw else self.getW()
         h = sizerect[1]-drawy if (self.h+drawy)>sizerect[1] else self.h
         #print((x,y,w,h),(dw,dh),(x,y,w,h))
         surf = surfacein.subsurface((x,y,w,h))
@@ -1689,7 +1682,7 @@ class listWidget(widget):
         scy=self.scrolly
         bx = self.barx
         by = self.bary
-        ofx = (scx.rx/( self.w - bx.w))*(self.wrapfitw()-self.w)
+        ofx = (scx.rx/( self.getW() - bx.w))*(self.wrapfitw()-self.getW())
         ofy = (scy.ry/( self.h - by.h))*(self.vlargest()-self.h)
         drawx -= ofx
         drawy -= ofy
@@ -1714,16 +1707,15 @@ class listWidget(widget):
                 gw = x.w
             #drawy += x.h
             drawy += x.h
-        #print(self.w)
         #print(by.h,len(self.children),self.wrapedhight,by.h*len(self.children))
         self.wrapedwidth += gw
         drawx = self.x
         drawy = self.y + self.h
-        if self.wrapedwidth>self.w :
+        if self.wrapedwidth>self.getW() :
             scx.y = drawy
             scx.x = drawx#+self.w
-            scx.w = self.w
-            bx.w = ( ( ( self.w / self.wrapfitw() ) ) * self.w )
+            scx.w = self.getW()
+            bx.w = ( ( ( self.getW() / self.wrapfitw() ) ) * self.getW() )
             scx.redraw(surfacein)
         drawx=self.x
         drawy=self.y
