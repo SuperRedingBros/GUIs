@@ -19,11 +19,15 @@ ldh = 560
 variabletest = 0
 looping=True
 clock = pygame.time.Clock()
+introTime = 0
+skipIntro = False
+video = guis.videoplayer.Video(str(path)+"/assets/TitleScreen.mp4",23.98,356,14,dw,dh)
 
 def renderframe(events,display,skipevents=False,screen=None):
     #print("frame")
     global dw
     global dh
+    global introTime
     if not skipevents:
         for event in events:
             if event.type == pygame.QUIT:
@@ -54,6 +58,13 @@ def renderframe(events,display,skipevents=False,screen=None):
 
     #pygame.display.update()
     screen.redraw(display)
+    if(introTime<=450 and not skipIntro):
+        video.draw(display,(0,0))
+        introTime+=1
+    else:
+        #print("s")
+        doneIntro=True
+        video.close()
 
 def render():
     global looping
