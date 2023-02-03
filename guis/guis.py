@@ -315,12 +315,6 @@ class Styleizor(styleobj.styleObj):
         for k in style:
             if k not in self.ignore and k not in globalignore:
                 x = self.getstyle(k)
-                if isinstance(x,str):
-                    try:
-                        x = compile(x,self.id,mode="eval")
-                        self.style[k] = x
-                    except:
-                        pass
                 if x != None:
                     x = self.calc(x)
                     # print(x)
