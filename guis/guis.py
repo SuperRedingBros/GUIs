@@ -230,6 +230,7 @@ class Styleizor(styleobj.styleObj):
         self.styleize(style)
 
     def styleize(self,style):
+        return
         for k in style:
             if k not in self.ignore and k not in globalignore:
                 x = self.getstyle(k)
